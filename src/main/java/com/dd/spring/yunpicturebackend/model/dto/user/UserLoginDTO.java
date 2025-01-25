@@ -1,4 +1,4 @@
-package com.dd.spring.yunpicturebackend.model.dto;
+package com.dd.spring.yunpicturebackend.model.dto.user;
 
 import lombok.Data;
 

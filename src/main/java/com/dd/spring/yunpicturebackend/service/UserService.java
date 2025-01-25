@@ -1,12 +1,16 @@
 package com.dd.spring.yunpicturebackend.service;
 
-import com.dd.spring.yunpicturebackend.model.dto.UserLoginDTO;
-import com.dd.spring.yunpicturebackend.model.dto.UserRegisterDTO;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.dd.spring.yunpicturebackend.model.dto.user.UserLoginDTO;
+import com.dd.spring.yunpicturebackend.model.dto.user.UserQueryDTO;
+import com.dd.spring.yunpicturebackend.model.dto.user.UserRegisterDTO;
 import com.dd.spring.yunpicturebackend.model.entity.User;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.dd.spring.yunpicturebackend.model.vo.UserLoginVO;
+import com.dd.spring.yunpicturebackend.model.vo.user.UserLoginVO;
+import com.dd.spring.yunpicturebackend.model.vo.user.UserVO;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
 * @author DELL
@@ -43,11 +47,25 @@ public interface UserService extends IService<User> {
      */
     boolean LogoutUser(HttpServletRequest request);
     /**
-     * 用户信息脱敏
+     * 登录用户信息脱敏
      * @param user
      * @return
      */
     UserLoginVO getLoginUserVO(User user);
+
+    /**
+     * 用户信息脱敏
+     * @param user
+     * @return
+     */
+    UserVO getUserVO(User user);
+
+    /**
+     * 获取脱敏的用户列表视图对象
+     * @param userList
+     * @return
+     */
+    List<UserVO> getUserVOList(List<User> userList);
 
     /**
      * 密码加密
@@ -56,5 +74,5 @@ public interface UserService extends IService<User> {
      */
     String getEncryptPassword(String password);
 
-
+    public QueryWrapper<User> getQueryWrapper(UserQueryDTO userQueryDTO);
 }

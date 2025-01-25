@@ -1,5 +1,7 @@
 package com.dd.spring.yunpicturebackend.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -8,10 +10,12 @@ import com.dd.spring.yunpicturebackend.enums.UserRoleEnum;
 import com.dd.spring.yunpicturebackend.exception.BusinessException;
 import com.dd.spring.yunpicturebackend.exception.ErrorCode;
 import com.dd.spring.yunpicturebackend.exception.ThrowUtils;
-import com.dd.spring.yunpicturebackend.model.dto.UserLoginDTO;
-import com.dd.spring.yunpicturebackend.model.dto.UserRegisterDTO;
+import com.dd.spring.yunpicturebackend.model.dto.user.UserLoginDTO;
+import com.dd.spring.yunpicturebackend.model.dto.user.UserQueryDTO;
+import com.dd.spring.yunpicturebackend.model.dto.user.UserRegisterDTO;
 import com.dd.spring.yunpicturebackend.model.entity.User;
-import com.dd.spring.yunpicturebackend.model.vo.UserLoginVO;
+import com.dd.spring.yunpicturebackend.model.vo.user.UserLoginVO;
+import com.dd.spring.yunpicturebackend.model.vo.user.UserVO;
 import com.dd.spring.yunpicturebackend.service.UserService;
 import com.dd.spring.yunpicturebackend.mapper.UserMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +25,9 @@ import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
 * @author DELL
@@ -176,7 +183,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
-     * 脱敏用户信息
+     * 脱敏登录用户信息
      * 该方法用于将用户实体对象转换为登录用户视图对象，以用于界面展示
      * 主要目的是防止敏感信息泄露，确保用户信息安全
      *
@@ -194,6 +201,34 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
+     * 脱敏用户信息
+     * @param user
+     * @return
+     */
+    @Override
+    public UserVO getUserVO(User user) {
+        if (user == null) {
+            return null;
+        }
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user, userVO);
+        return userVO;
+    }
+
+    /**
+     * 获取脱敏的用户列表视图对象
+     * @param userList
+     * @return
+     */
+    @Override
+    public List<UserVO> getUserVOList(List<User> userList) {
+        if (CollUtil.isEmpty(userList)) {
+            return new ArrayList<>();
+        }
+        return userList.stream().map(this::getUserVO).collect(Collectors.toList());
+    }
+
+    /**
      * 加密算法
      * @param password
      * @return
@@ -203,8 +238,27 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String salt = "yoyo";
         return DigestUtils.md5DigestAsHex((salt + password).getBytes());
     }
+
+    @Override
+    public QueryWrapper<User> getQueryWrapper(UserQueryDTO userQueryDTO) {
+        if (userQueryDTO == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+        }
+        Long id = userQueryDTO.getId();
+        String userAccount = userQueryDTO.getUserAccount();
+        String userName = userQueryDTO.getUserName();
+        String userProfile = userQueryDTO.getUserProfile();
+        String userRole = userQueryDTO.getUserRole();
+        String sortField = userQueryDTO.getSortField();
+        String sortOrder = userQueryDTO.getSortOrder();
+
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq(ObjUtil.isNotNull(id), "id", id);
+        queryWrapper.eq(StrUtil.isNotBlank(userRole), "userRole", userRole);
+        queryWrapper.like(StrUtil.isNotBlank(userAccount), "userAccount", userAccount);
+        queryWrapper.like(StrUtil.isNotBlank(userName), "userName", userName);
+        queryWrapper.like(StrUtil.isNotBlank(userProfile), "userProfile", userProfile);
+        queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), sortOrder.equals("ascend"), sortField);
+        return queryWrapper;
+    }
 }
-
-
-
-
