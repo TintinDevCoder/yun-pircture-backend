@@ -10,18 +10,10 @@ spring:
   # 数据库配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/yu_picture
+    url: jdbc:mysql://localhost:3306/yun_picture
     username: root
     password: 619000
 
-
-#下面这些内容是为了让MyBatis映射
-#指定Mybatis的Mapper文件
-mybatis:
-  #指定Mybatis的Mapper文件
-  mapper-locations: classpath:mappers/*xml
-  #指定Mybatis的实体目录
-  type-aliases-package: com.dd.spring.yunpicturebackend.mybatis.entity
 
 mybatis-plus:
   configuration:
