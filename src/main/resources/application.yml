@@ -13,6 +13,12 @@ spring:
     url: jdbc:mysql://localhost:3306/yun_picture
     username: root
     password: 619000
+  profiles:
+    active: local
+  servlet:
+    multipart:
+      #开放更大的文件上传体积
+      max-file-size: 10MB
 
 
 mybatis-plus:
@@ -37,3 +43,11 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.dd.spring.yunpicturebackend.controller
+# 对象存储配置（需要从腾讯云获取）
+cos:
+  client:
+    host: ${cos.host}
+    secretId: ${cos.secretId}
+    secretKey: ${cos.secretKey}
+    region: ${cos.region}
+    bucket: ${cos.bucket}

@@ -91,7 +91,6 @@ public class UserController {
         User user = userById.getData();
         return ResultUtils.success(userService.getUserVO(user));
     }
-
     //管理员操作
 
     /**
@@ -106,9 +105,8 @@ public class UserController {
         ThrowUtils.throwIf(userAddDTO == null, ErrorCode.PARAMS_ERROR);
         User user = new User();
         BeanUtils.copyProperties(userAddDTO, user);
-        //设置密码
-        final String DEFAULT_PASSWORD = "123456";
-        String encryptPassword = userService.getEncryptPassword(DEFAULT_PASSWORD);
+
+        String encryptPassword = userService.getEncryptPassword(UserConstant.DEFAULT_PASSWORD);
         user.setUserPassword(encryptPassword);
         try {
             boolean result = userService.save(user);

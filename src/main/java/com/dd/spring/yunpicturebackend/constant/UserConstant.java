@@ -19,6 +19,13 @@ public interface UserConstant {
      */
     String ADMIN_ROLE = "admin";
 
+    String USER_ACCOUNT = "userAccount";
+
+    String USER_PASSWORD = "userPassword";
+
+    String DEFAULT_NAME = "userName";
+
+    String DEFAULT_PASSWORD = "123456";
     // endregion
 }
 

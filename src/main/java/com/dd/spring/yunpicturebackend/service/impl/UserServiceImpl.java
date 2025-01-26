@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.dd.spring.yunpicturebackend.constant.UserConstant;
+import com.dd.spring.yunpicturebackend.constant.error.UserErrorConstant;
 import com.dd.spring.yunpicturebackend.enums.UserRoleEnum;
 import com.dd.spring.yunpicturebackend.exception.BusinessException;
 import com.dd.spring.yunpicturebackend.exception.ErrorCode;
@@ -48,26 +49,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 1. 校验参数
         // 检查是否有参数为空
         if (StrUtil.hasBlank(userAccount, userPassword, checkPassword)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, UserErrorConstant.PARAMS_EMPTY);
         }
         // 检查用户账号长度是否符合要求
         if (userAccount.length() < 4) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, UserErrorConstant.USER_ACCOUNT_SHORT);
         }
         // 检查用户密码长度是否符合要求
         if (userPassword.length() < 8 || checkPassword.length() < 8) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码过短");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, UserErrorConstant.USER_PASSWORD_SHORT);
         }
         // 检查两次输入的密码是否一致
         if (!userPassword.equals(checkPassword)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, UserErrorConstant.DIFFERENT_PASSWORDS);
         }
         //2、检查用户账号是否和数据库中已有的重复
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userAccount", userAccount);
         Long count = this.baseMapper.selectCount(queryWrapper);
         if (count > 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号已重复");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, UserErrorConstant.ACCOUNT_DUP);
         }
         //密码加密
         String encryptPassword = getEncryptPassword(userPassword);
@@ -75,20 +76,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = new User();
         user.setUserAccount(userAccount);
         user.setUserPassword(encryptPassword);
-        user.setUserName("无名");
+        user.setUserName(UserConstant.DEFAULT_NAME);
         user.setUserRole(UserRoleEnum.USER.getValue());
         try {
             // 尝试保存用户信息到数据库
             boolean saveResult = this.save(user);
             if (!saveResult) {
                 // 如果保存失败，抛出异常
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败,数据库错误");
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, UserErrorConstant.REGISTER_DATABASE_ERROR);
             }
             // 返回用户ID
             return user.getId();
         } catch (Exception e) {
             // 捕获异常，并抛出自定义异常
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败,数据库错误" + e.getMessage());
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, UserErrorConstant.REGISTER_DATABASE_ERROR + e.getMessage());
         }
     }
 
@@ -108,13 +109,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         //1、校验输入参数的合法性
         if (StrUtil.hasBlank(userAccount, userPassword)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, UserErrorConstant.PARAMS_EMPTY);
         }
         if (userAccount.length() < 4) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, UserErrorConstant.USER_ACCOUNT_SHORT);
         }
         if (userPassword.length() < 8) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码过短");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, UserErrorConstant.USER_PASSWORD_SHORT);
         }
 
         //2、对用户传递的密码进行加密处理
@@ -123,19 +124,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //3、根据账号和加密后的密码查询用户是否存在
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper
-                .eq("userAccount", userAccount)
-                .eq("userPassword", encryptPassword);
+                .eq(UserConstant.USER_ACCOUNT, userAccount)
+                .eq(UserConstant.USER_PASSWORD, encryptPassword);
         User user = null;
         try{
             user = this.baseMapper.selectOne(queryWrapper);
         }catch (Exception e) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "登录失败,数据库错误" + e.getMessage());
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, UserErrorConstant.LOGIN_DATABASE_ERROR + e.getMessage());
         }
 
         // 如果查询结果为空，说明用户不存在或密码错误
         if (user == null) {
             log.info("user login failed, userAccount cannot match userPassword");
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, UserErrorConstant.DATA_ERROR);
         }
 
         //4、保存用户登录态
@@ -177,7 +178,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 先判断是否已登录
         User currentUser = (User)request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
         // 如果会话中没有用户登录状态或用户ID为空，则抛出未登录异常
-        ThrowUtils.throwIf(currentUser == null, new BusinessException(ErrorCode.OPERATION_ERROR, "未登录"));
+        ThrowUtils.throwIf(currentUser == null, new BusinessException(ErrorCode.OPERATION_ERROR, UserErrorConstant.USER_NOLOGIN));
         request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
         return true;
     }
@@ -242,7 +243,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public QueryWrapper<User> getQueryWrapper(UserQueryDTO userQueryDTO) {
         if (userQueryDTO == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, UserErrorConstant.PARAMS_EMPTY);
         }
         Long id = userQueryDTO.getId();
         String userAccount = userQueryDTO.getUserAccount();
@@ -261,4 +262,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), sortOrder.equals("ascend"), sortField);
         return queryWrapper;
     }
+
+    @Override
+    public boolean isAdmin(User user) {
+        return user != null && UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
+    }
+
 }
