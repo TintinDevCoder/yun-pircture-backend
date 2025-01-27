@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Resource;
 import java.io.File;
 
+
 @Component
 public class CosManager {
 

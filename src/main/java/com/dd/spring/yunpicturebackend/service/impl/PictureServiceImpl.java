@@ -45,7 +45,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
     @Resource
     private UserService userService;
     @Override
-    public PictureVO uploadPicture(MultipartFile multipartFile, PictureUploadRequest pictureUploadRequest, User loginUser) {
+    public PictureVO uploadPicture(MultipartFile multipartFile,
+                                   PictureUploadRequest pictureUploadRequest,
+                                   User loginUser) {
         // 校验参数
         ThrowUtils.throwIf(loginUser == null, ErrorCode.NO_AUTH_ERROR);
         // 判断是新增还是删除
@@ -57,7 +59,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         // 如果是更新，判断图片是否存在
         if (pictureId != null) {
             boolean exists = this.lambdaQuery().eq(Picture::getId, pictureId).exists();
-            ThrowUtils.throwIf(exists, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
+            ThrowUtils.throwIf(!exists, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
         }
         // 上传图片，得到图片信息
         // 按照用户 id 划分目录
@@ -70,7 +72,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         picture.setUserId(loginUser.getId());
         // 操作数据库
         if (pictureId != null) {
-            //更新，需要补充Id和编辑时间
+            //如果是更新，则需要补充Id和编辑时间
             picture.setId(pictureId);
             picture.setEditTime(new Date());
         }
