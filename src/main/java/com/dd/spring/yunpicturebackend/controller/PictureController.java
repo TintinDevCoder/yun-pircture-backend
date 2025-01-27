@@ -8,14 +8,12 @@ import com.dd.spring.yunpicturebackend.common.BaseResponse;
 import com.dd.spring.yunpicturebackend.common.DeleteRequest;
 import com.dd.spring.yunpicturebackend.common.ResultUtils;
 import com.dd.spring.yunpicturebackend.constant.UserConstant;
+import com.dd.spring.yunpicturebackend.enums.PictureReviewStatusEnum;
 import com.dd.spring.yunpicturebackend.exception.BusinessException;
 import com.dd.spring.yunpicturebackend.exception.ErrorCode;
 import com.dd.spring.yunpicturebackend.exception.ThrowUtils;
 import com.dd.spring.yunpicturebackend.manager.CosManager;
-import com.dd.spring.yunpicturebackend.model.dto.picture.PictureEditRequest;
-import com.dd.spring.yunpicturebackend.model.dto.picture.PictureQueryRequest;
-import com.dd.spring.yunpicturebackend.model.dto.picture.PictureUpdateRequest;
-import com.dd.spring.yunpicturebackend.model.dto.picture.PictureUploadRequest;
+import com.dd.spring.yunpicturebackend.model.dto.picture.*;
 import com.dd.spring.yunpicturebackend.model.entity.Picture;
 import com.dd.spring.yunpicturebackend.model.entity.User;
 import com.dd.spring.yunpicturebackend.model.vo.picture.PictureTagCategory;
@@ -61,6 +59,8 @@ public class PictureController {
         //查询数据库
         Picture picture = pictureService.getById(id);
         ThrowUtils.throwIf(picture == null, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
+        //仅返回审核后的
+        ThrowUtils.throwIf(picture.getReviewStatus() != PictureReviewStatusEnum.PASS.getValue(), new BusinessException(ErrorCode.FORBIDDEN_ERROR, "图片资源错误"));
         //返回封装类
         return ResultUtils.success(pictureService.getPictureVO(picture, request));
     }
@@ -74,9 +74,11 @@ public class PictureController {
                                                            HttpServletRequest request) {
         long current = pictureQueryRequest.getCurrent();
         long size = pictureQueryRequest.getPageSize();
-        //限制爬虫
+        // 限制爬虫
         ThrowUtils.throwIf(size >= 20 || size < 0, new BusinessException(ErrorCode.PARAMS_ERROR));
-        //查询数据库
+        // 仅限审核通过的返回
+        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+        // 查询数据库
         Page<Picture> picturePage = pictureService.page(new Page<>(current, size)
                 ,pictureService.getQueryWrapper(pictureQueryRequest));
         Page<PictureVO> picturePageVOList = pictureService.getPictureVOPage(picturePage, request);
@@ -102,12 +104,14 @@ public class PictureController {
         picture.setEditTime(new Date());
         // 数据校验
         pictureService.validPicture(picture);
+        User loginUser = userService.getLoginUser(request);
+        //补充审核参数
+        pictureService.fillReviewParams(picture, loginUser);
         // 判断图片是否存在
         QueryWrapper qw = new QueryWrapper<>().eq("id", pictureEditRequest.getId());
         boolean exists = pictureService.exists(qw);
         ThrowUtils.throwIf(!exists, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
         // 仅本人或管理员可编辑
-        User loginUser = userService.getLoginUser(request);
         Picture oldPicture = pictureService.getById(pictureEditRequest.getId());
         if (!oldPicture.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
@@ -118,19 +122,7 @@ public class PictureController {
         return ResultUtils.success(true);
     }
     //管理员
-    /**
-     * 上传图片（可重新上传）
-     */
-    @PostMapping("/upload")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<PictureVO> uploadPicture(
-            @RequestPart("file") MultipartFile multipartFile,
-            PictureUploadRequest pictureUploadRequest,
-            HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
-        PictureVO pictureVO = pictureService.uploadPicture(multipartFile, pictureUploadRequest, loginUser);
-        return ResultUtils.success(pictureVO);
-    }
+
     /**
      * 更新图片（管理员）
      * @param pictureUpdateRequest
@@ -138,7 +130,8 @@ public class PictureController {
      */
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest) {
+    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest,
+                                               HttpServletRequest request) {
         ThrowUtils.throwIf(pictureUpdateRequest == null ||pictureUpdateRequest.getId() <= 0, new BusinessException(ErrorCode.PARAMS_ERROR));
         //实体类转化为DTO
         Picture picture = new Picture();
@@ -151,6 +144,9 @@ public class PictureController {
         QueryWrapper qw = new QueryWrapper<>().eq("id", pictureUpdateRequest.getId());
         boolean exists = pictureService.exists(qw);
         ThrowUtils.throwIf(!exists, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
+        User loginUser = userService.getLoginUser(request);
+        //补充审核参数
+        pictureService.fillReviewParams(picture, loginUser);
         //操作数据库，更新数据
         boolean result = pictureService.updateById(picture);
         ThrowUtils.throwIf(!result, new BusinessException(ErrorCode.OPERATION_ERROR));
@@ -189,7 +185,34 @@ public class PictureController {
         return ResultUtils.success(picturePage);
     }
 
+    /**
+     * 审核图片
+     * @param pictureReviewRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/review")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> doPictureReview(@RequestBody PictureReviewRequest pictureReviewRequest,
+                                                         HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        pictureService.doPictureReview(pictureReviewRequest, loginUser);
+        return ResultUtils.success(true);
+    }
     //公用
+    /**
+     * 上传图片（可重新上传）
+     */
+    @PostMapping("/upload")
+    public BaseResponse<PictureVO> uploadPicture(
+            @RequestPart("file") MultipartFile multipartFile,
+            PictureUploadRequest pictureUploadRequest,
+            HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        PictureVO pictureVO = pictureService.uploadPicture(multipartFile, pictureUploadRequest, loginUser);
+        return ResultUtils.success(pictureVO);
+    }
+
     /**
      * 删除图片
      * @param deleteRequest
