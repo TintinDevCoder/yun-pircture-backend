@@ -23,6 +23,10 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * 已废弃改用UploadImpl
+ */
+@Deprecated
 @Service
 @Slf4j
 public class FileManager {  

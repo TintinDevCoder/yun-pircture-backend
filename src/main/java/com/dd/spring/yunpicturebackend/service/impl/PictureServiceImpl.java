@@ -12,6 +12,8 @@ import com.dd.spring.yunpicturebackend.exception.BusinessException;
 import com.dd.spring.yunpicturebackend.exception.ErrorCode;
 import com.dd.spring.yunpicturebackend.exception.ThrowUtils;
 import com.dd.spring.yunpicturebackend.manager.FileManager;
+import com.dd.spring.yunpicturebackend.manager.upload.FilePictureUploadImpl;
+import com.dd.spring.yunpicturebackend.manager.upload.UrlPictureUploadImpl;
 import com.dd.spring.yunpicturebackend.model.dto.file.UploadPictureResult;
 import com.dd.spring.yunpicturebackend.model.dto.picture.PictureQueryRequest;
 import com.dd.spring.yunpicturebackend.model.dto.picture.PictureReviewRequest;
@@ -43,11 +45,13 @@ import java.util.stream.Collectors;
 @Service
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> implements PictureService{
     @Resource
-    private FileManager fileManager;
+    private FilePictureUploadImpl filePictureUpload;
+    @Resource
+    private UrlPictureUploadImpl urlPictureUpload;
     @Resource
     private UserService userService;
     @Override
-    public PictureVO uploadPicture(MultipartFile multipartFile,
+    public PictureVO uploadPicture(Object inputSource,
                                    PictureUploadRequest pictureUploadRequest,
                                    User loginUser) {
         // 校验参数
@@ -68,7 +72,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         // 上传图片，得到图片信息
         // 按照用户 id 划分目录
         String uploadPathPrefix = String.format("public/%s",loginUser.getId());
-        UploadPictureResult uploadPictureResult = fileManager.uploadPicture(multipartFile, uploadPathPrefix);
+        //根据inputSource的类型区分上传方式
+        UploadPictureResult uploadPictureResult;
+        if (inputSource instanceof String) {
+            uploadPictureResult = urlPictureUpload.uploadPicture(inputSource, uploadPathPrefix);
+        }else {
+            uploadPictureResult = filePictureUpload.uploadPicture(inputSource, uploadPathPrefix);
+        }
         //构造入库的图片信息
         Picture picture = new Picture();
         BeanUtils.copyProperties(uploadPictureResult, picture);
@@ -82,7 +92,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
             picture.setId(pictureId);
             picture.setEditTime(new Date());
         }
-
         try {
             boolean result = this.saveOrUpdate(picture);
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, FileErrorConstant.DATABASE_ERROR);
