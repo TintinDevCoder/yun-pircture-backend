@@ -250,6 +250,10 @@ public class PictureController {
         return ResultUtils.success(true);
     }
 
+    /**
+     * 获取标签
+     * @return
+     */
     @GetMapping("/tag_category")
     public BaseResponse<PictureTagCategory> listPictureTagCategory() {
         PictureTagCategory pictureTagCategory = new PictureTagCategory();

@@ -80,7 +80,7 @@ public class UserController {
     }
 
     /**
-     * 根据id获取包装类
+     * 根据id获取包装类(脱敏)
      * @param id
      * @return
      */
@@ -184,9 +184,10 @@ public class UserController {
         long pageSize = userQueryDTO.getPageSize();
         //分页查询 getQueryWrapper获取查询条件
         Page<User> userPage = userService.page(new Page<>(current, pageSize), userService.getQueryWrapper(userQueryDTO));
-        Page<UserVO> userVOPage = new Page<>(current,pageSize, userPage.getTotal());
         //getRecords是实际查询列表
         List<UserVO> userVOList = userService.getUserVOList(userPage.getRecords());
+
+        Page<UserVO> userVOPage = new Page<>(current, pageSize, userPage.getTotal());
         userVOPage.setRecords(userVOList);
         return ResultUtils.success(userVOPage);
     }
