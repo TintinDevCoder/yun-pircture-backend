@@ -12,7 +12,6 @@ import com.dd.spring.yunpicturebackend.enums.PictureReviewStatusEnum;
 import com.dd.spring.yunpicturebackend.exception.BusinessException;
 import com.dd.spring.yunpicturebackend.exception.ErrorCode;
 import com.dd.spring.yunpicturebackend.exception.ThrowUtils;
-import com.dd.spring.yunpicturebackend.manager.CosManager;
 import com.dd.spring.yunpicturebackend.model.dto.picture.*;
 import com.dd.spring.yunpicturebackend.model.entity.Picture;
 import com.dd.spring.yunpicturebackend.model.entity.User;
@@ -20,9 +19,6 @@ import com.dd.spring.yunpicturebackend.model.vo.picture.PictureTagCategory;
 import com.dd.spring.yunpicturebackend.model.vo.picture.PictureVO;
 import com.dd.spring.yunpicturebackend.service.PictureService;
 import com.dd.spring.yunpicturebackend.service.UserService;
-import com.qcloud.cos.model.COSObject;
-import com.qcloud.cos.model.COSObjectInputStream;
-import com.qcloud.cos.utils.IOUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
@@ -30,9 +26,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -198,6 +191,19 @@ public class PictureController {
         User loginUser = userService.getLoginUser(request);
         pictureService.doPictureReview(pictureReviewRequest, loginUser);
         return ResultUtils.success(true);
+    }
+
+    /**
+     * 批量抓取并上传图片
+     */
+    @PostMapping("/upload/batch")
+    public BaseResponse<Integer> uploadPictureByBatch(
+            @RequestBody PictureUploadByBatchRequest pictureUploadByBatchRequest,
+            HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureUploadByBatchRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        Integer uploadCount = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);
+        return ResultUtils.success(uploadCount);
     }
     //公用
     /**

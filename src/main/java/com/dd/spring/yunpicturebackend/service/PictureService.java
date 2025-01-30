@@ -4,12 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dd.spring.yunpicturebackend.model.dto.picture.PictureQueryRequest;
 import com.dd.spring.yunpicturebackend.model.dto.picture.PictureReviewRequest;
+import com.dd.spring.yunpicturebackend.model.dto.picture.PictureUploadByBatchRequest;
 import com.dd.spring.yunpicturebackend.model.dto.picture.PictureUploadRequest;
 import com.dd.spring.yunpicturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.dd.spring.yunpicturebackend.model.entity.User;
 import com.dd.spring.yunpicturebackend.model.vo.picture.PictureVO;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -73,4 +73,16 @@ public interface PictureService extends IService<Picture> {
      * @param loginUser
      */
     public void fillReviewParams(Picture picture, User loginUser);
+    /**
+     * 批量抓取和创建图片
+     *
+     * @param pictureUploadByBatchRequest
+     * @param loginUser
+     * @return 成功创建的图片数
+     */
+    Integer uploadPictureByBatch(
+            PictureUploadByBatchRequest pictureUploadByBatchRequest,
+            User loginUser
+    );
+
 }
