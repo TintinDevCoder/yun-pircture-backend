@@ -19,6 +19,12 @@ spring:
     multipart:
       #开放更大的文件上传体积
       max-file-size: 10MB
+  # Redis 配置
+  redis:
+    database: ${redis.database}
+    host: ${redis.host}
+    port: ${redis.port}
+    timeout: ${redis.timeout}
 
 
 mybatis-plus:
