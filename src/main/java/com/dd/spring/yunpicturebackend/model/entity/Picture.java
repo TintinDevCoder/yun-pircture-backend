@@ -22,6 +22,12 @@ public class Picture {
      * 图片 url
      */
     private String url;
+
+    /**
+     * 缩略图 url
+     */
+    private String thumbnailUrl;
+
     /**
      * 审核状态：0-待审核; 1-通过; 2-拒绝
      */

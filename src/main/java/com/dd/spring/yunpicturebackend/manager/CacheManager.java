@@ -4,8 +4,7 @@ import cn.hutool.json.JSONUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.*;
 import org.springframework.stereotype.Component;
 import org.springframework.util.DigestUtils;
 
@@ -62,17 +61,14 @@ public class CacheManager {
      * @param key
      * @return
      */
-    public Object getCacheData(Object key, String tag) {
-        //构建缓存的key
-        String queryCondition = JSONUtil.toJsonStr(key);
-        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
-        String cacheKey = String.format("yunpicture:%s:%s", tag, hashKey);
+    public Object getCacheData(String key) {
 
-        String fromLocalCache = getFromLocalCache(cacheKey);
+
+        String fromLocalCache = getFromLocalCache(key);
         if (fromLocalCache != null) {
             return fromLocalCache;
         }
-        String fromRedis = getFromRedis(cacheKey);
+        String fromRedis = getFromRedis(key);
         return fromRedis;
     }
 
@@ -82,16 +78,52 @@ public class CacheManager {
      * @param value
      * @param expireTime
      */
-    public void setCacheData(Object key, Object value, String tag, int expireTime) {
-        //构建缓存的key
-        String queryCondition = JSONUtil.toJsonStr(key);
-        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
-        String cacheKey = String.format("yunpicture:%s:%s", tag, hashKey);
+    public void setCacheData(String key, Object value, int expireTime) {
+
         //构建缓存的value
         String cacheValue = JSONUtil.toJsonStr(value);
         //存入本地缓存
-        putInLocalCache(cacheKey, cacheValue);
+        putInLocalCache(key, cacheValue);
         //存入redis缓存
-        putInRedis(cacheKey, cacheValue, expireTime);
+        putInRedis(key, cacheValue, expireTime);
+    }
+
+    /**
+     * 刷新以指定前缀开头的所有 Redis 缓存
+     */
+    public void refreshRedisCacheByPrefix(String prefix) {
+        stringRedisTemplate.execute((RedisCallback<Void>) connection -> {
+            Cursor<byte[]> cursor = connection.scan(ScanOptions.scanOptions()
+                    .match(prefix + "*")
+                    .count(100)
+                    .build());
+
+            while (cursor.hasNext()) {
+                byte[] keyBytes = cursor.next();
+                String key = new String(keyBytes);
+                stringRedisTemplate.delete(key);
+            }
+
+            return null;
+        });
+    }
+
+    /**
+     * 刷新以指定前缀开头的所有本地缓存
+     */
+    public void refreshLocalCacheByPrefix(String prefix) {
+        localCache.asMap().keySet().forEach(key -> {
+            if (key.startsWith(prefix)) {
+                localCache.invalidate(key);
+            }
+        });
+    }
+
+    /**
+     * 刷新以指定前缀开头的所有缓存（Redis + 本地缓存）
+     */
+    public void refreshAllCacheByPrefix(String prefix) {
+        refreshRedisCacheByPrefix(prefix);
+        refreshLocalCacheByPrefix(prefix);
     }
 }

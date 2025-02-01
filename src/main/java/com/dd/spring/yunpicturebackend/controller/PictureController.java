@@ -71,9 +71,11 @@ public class PictureController {
     @GetMapping("/get/vo")
     public BaseResponse<PictureVO> getPictureVOById(@RequestParam("id") Long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, new BusinessException(ErrorCode.PARAMS_ERROR));
+        //构建缓存的key
+        String cacheKey = String.format("yunpicture:%s:%s", "getPictureVOById", id);
         // 查询缓存
         String cacheTag = "getPictureVOById";
-        String cacheValue = (String) cacheManager.getCacheData(id, cacheTag);
+        String cacheValue = (String) cacheManager.getCacheData(cacheKey);
         if (cacheValue != null) {
             //缓存命中，缓存结果返回
             PictureVO cachePage = JSONUtil.toBean(cacheValue, PictureVO.class);
@@ -87,7 +89,7 @@ public class PictureController {
         //存入缓存
         //设置缓存过期时间(5-10min),防止缓存雪崩
         int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
-        cacheManager.setCacheData(id, picture, cacheTag, cacheExpireTime);
+        cacheManager.setCacheData(cacheKey, picture, cacheExpireTime);
         //返回封装类
         return ResultUtils.success(pictureService.getPictureVO(picture, request));
     }
@@ -127,9 +129,12 @@ public class PictureController {
         ThrowUtils.throwIf(size > 20 || size < 0, new BusinessException(ErrorCode.PARAMS_ERROR));
         // 仅限审核通过的可以查看
         pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+        //构建缓存的key
+        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
+        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
+        String cacheKey = String.format("yunpicture:%s:%s", "listPictureVOByPage", hashKey);
         // 查询缓存
-        String cacheTag = "listPictureVOByPage";
-        String cacheValue = (String) cacheManager.getCacheData(pictureQueryRequest, cacheTag);
+        String cacheValue = (String) cacheManager.getCacheData(cacheKey);
         if (cacheValue != null) {
             //缓存命中，缓存结果返回
             Page<PictureVO> cachePage = JSONUtil.toBean(cacheValue, Page.class);
@@ -143,7 +148,7 @@ public class PictureController {
         //存入缓存
         //设置缓存过期时间(5-10min),防止缓存雪崩
         int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
-        cacheManager.setCacheData(pictureQueryRequest, picturePageVOList, cacheTag, cacheExpireTime);
+        cacheManager.setCacheData(cacheKey, picturePageVOList, cacheExpireTime);
 
         return ResultUtils.success(picturePageVOList);
     }
@@ -181,6 +186,9 @@ public class PictureController {
         // 操作数据库，更新数据
         boolean result = pictureService.updateById(picture);
         ThrowUtils.throwIf(!result, new BusinessException(ErrorCode.OPERATION_ERROR));
+        //刷新缓存
+        int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
+        cacheManager.setCacheData(String.valueOf(picture.getId()), picture, cacheExpireTime);
         return ResultUtils.success(true);
     }
     //管理员

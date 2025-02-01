@@ -11,6 +11,7 @@ import com.dd.spring.yunpicturebackend.enums.PictureReviewStatusEnum;
 import com.dd.spring.yunpicturebackend.exception.BusinessException;
 import com.dd.spring.yunpicturebackend.exception.ErrorCode;
 import com.dd.spring.yunpicturebackend.exception.ThrowUtils;
+import com.dd.spring.yunpicturebackend.manager.CacheManager;
 import com.dd.spring.yunpicturebackend.manager.upload.FilePictureUploadImpl;
 import com.dd.spring.yunpicturebackend.manager.upload.UrlPictureUploadImpl;
 import com.dd.spring.yunpicturebackend.model.dto.file.UploadPictureResult;
@@ -29,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -55,6 +57,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
     private UrlPictureUploadImpl urlPictureUpload;
     @Resource
     private UserService userService;
+    @Autowired
+    private CacheManager cacheManager;
+
     @Override
     public PictureVO uploadPicture(Object inputSource,
                                    PictureUploadRequest pictureUploadRequest,
@@ -89,6 +94,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         BeanUtils.copyProperties(uploadPictureResult, picture);
         picture.setName(uploadPictureResult.getPicName());
         picture.setUserId(loginUser.getId());
+        picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
         //支持外层传递图片名称
         if (pictureUploadRequest != null && StrUtil.isNotBlank(pictureUploadRequest.getPicName())) {
             picture.setName(pictureUploadRequest.getPicName());
@@ -336,6 +342,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
                 continue;
             }
             if (uploadCount >= count) {
+                //批量存储数据库发生变化较大、刷新首页分页查询缓存
+                cacheManager.refreshAllCacheByPrefix("listPictureVOByPage");
                 break;
             }
         }
