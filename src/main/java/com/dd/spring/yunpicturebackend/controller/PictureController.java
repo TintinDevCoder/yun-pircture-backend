@@ -324,12 +324,9 @@ public class PictureController {
         //当前不是创建图片的用户或管理员
         ThrowUtils.throwIf(!oldPicture.getUserId().equals(loginUser.getId()) && ! userService.isAdmin(loginUser), new BusinessException(ErrorCode.NO_AUTH_ERROR));
         //操作数据库，删除
-        try{
-            boolean result = pictureService.removeById(id);
-            ThrowUtils.throwIf(!result, new BusinessException(ErrorCode.OPERATION_ERROR));
-        }catch (Exception e){
-            throw new BusinessException(ErrorCode.OPERATION_ERROR);
-        }
+        boolean result = pictureService.removeById(id);
+        ThrowUtils.throwIf(!result, new BusinessException(ErrorCode.OPERATION_ERROR));
+        pictureService.clearPictureFile(oldPicture);
         return ResultUtils.success(true);
     }
 
@@ -349,5 +346,8 @@ public class PictureController {
 
 
 
+    @GetMapping("/delcache")
+    public void deleteCache() {
 
+    }
 }

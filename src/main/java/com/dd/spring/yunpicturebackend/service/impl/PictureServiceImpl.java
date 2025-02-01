@@ -2,6 +2,7 @@ package com.dd.spring.yunpicturebackend.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -12,6 +13,7 @@ import com.dd.spring.yunpicturebackend.exception.BusinessException;
 import com.dd.spring.yunpicturebackend.exception.ErrorCode;
 import com.dd.spring.yunpicturebackend.exception.ThrowUtils;
 import com.dd.spring.yunpicturebackend.manager.CacheManager;
+import com.dd.spring.yunpicturebackend.manager.CosManager;
 import com.dd.spring.yunpicturebackend.manager.upload.FilePictureUploadImpl;
 import com.dd.spring.yunpicturebackend.manager.upload.UrlPictureUploadImpl;
 import com.dd.spring.yunpicturebackend.model.dto.file.UploadPictureResult;
@@ -31,6 +33,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -59,6 +62,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
     private UserService userService;
     @Autowired
     private CacheManager cacheManager;
+    @Resource
+    private CosManager cosManager;
 
     @Override
     public PictureVO uploadPicture(Object inputSource,
@@ -73,8 +78,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         }
         // pictureId有值说明是更新图片
         // 如果是更新，判断图片是否存在
+        Picture oldpicture = null;
         if (pictureId != null) {
-            Picture oldpicture = this.getById(pictureId);
+            oldpicture = this.getById(pictureId);
             ThrowUtils.throwIf(oldpicture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
             //仅本人或管理员可编辑图片
             ThrowUtils.throwIf((oldpicture.getUserId() != loginUser.getId()) && !userService.isAdmin(loginUser), ErrorCode.NO_AUTH_ERROR);
@@ -110,6 +116,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         try {
             boolean result = this.saveOrUpdate(picture);
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, FileErrorConstant.DATABASE_ERROR);
+            //如果是更新，则删除老图片的存储
+            if (pictureId != null) {
+                this.clearPictureFile(oldpicture);
+                //刷新缓存
+                int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
+                cacheManager.setCacheData(String.valueOf(oldpicture.getId()), picture, cacheExpireTime);
+            }
         }catch (Exception e) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
         }
@@ -348,6 +361,25 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
             }
         }
         return uploadCount;
+    }
+    @Async //异步执行
+    @Override
+    public void clearPictureFile(Picture oldpicture) {
+        // 判断该图片是否被多条记录使用（使用了秒传）
+        String pictureUrl = oldpicture.getUrl();
+        Long count = this.lambdaQuery()
+                .eq(Picture::getUrl, oldpicture.getUrl())
+                .count();
+        if (count > 1) {
+            return;
+        }
+        // 删除原始图片
+        cosManager.deleteObject(pictureUrl);
+        //删除缩略图
+        String thumbnailUrl = oldpicture.getThumbnailUrl();
+        if (StrUtil.isNotBlank(thumbnailUrl)) {
+            cosManager.deleteObject(thumbnailUrl);
+        }
     }
 
 }
