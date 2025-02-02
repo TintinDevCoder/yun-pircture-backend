@@ -152,32 +152,40 @@ public class PictureController {
     @GetMapping("/get/vo")
     public BaseResponse<PictureVO> getPictureVOById(@RequestParam("id") Long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, new BusinessException(ErrorCode.PARAMS_ERROR));
+        PictureVO result = new PictureVO();
+        Picture picture = new Picture();
         //构建缓存的key
         String cacheKey = String.format("yunpicture:%s:%s", "getPictureVOById", id);
         // 查询缓存
         String cacheValue = (String) cacheManager.getCacheData(cacheKey);
         if (cacheValue != null) {
-            //缓存命中，缓存结果返回
-            PictureVO cachePage = JSONUtil.toBean(cacheValue, PictureVO.class);
-            return ResultUtils.success(cachePage);
+            //缓存命中，使用缓存结果
+            picture = JSONUtil.toBean(cacheValue, Picture.class);
+            ThrowUtils.throwIf(picture == null, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
+
+        }else {
+            //查询数据库
+            picture = pictureService.getById(id);
         }
-        //查询数据库
-        Picture picture = pictureService.getById(id);
         ThrowUtils.throwIf(picture == null, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
+        //封装类
+        result = pictureService.getPictureVO(picture, request);
         //校验空间权限
-        Long spaceId = picture.getSpaceId();
+        Long spaceId = result.getSpaceId();
         if (spaceId != null) {
             User loginUser = userService.getLoginUser(request);
             pictureService.checkPictureAuth(picture, loginUser);
         }
         //仅返回审核后的
         ThrowUtils.throwIf(picture.getReviewStatus() != PictureReviewStatusEnum.PASS.getValue(), new BusinessException(ErrorCode.FORBIDDEN_ERROR, "图片资源错误"));
-        //存入缓存
-        //设置缓存过期时间(5-10min),防止缓存雪崩
-        int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
-        cacheManager.setCacheData(cacheKey, picture, cacheExpireTime);
+        if (cacheValue == null) {
+            //存入缓存
+            //设置缓存过期时间(5-10min),防止缓存雪崩
+            int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
+            cacheManager.setCacheData(cacheKey, picture, cacheExpireTime);
+        }
         //返回封装类
-        return ResultUtils.success(pictureService.getPictureVO(picture, request));
+        return ResultUtils.success(result);
     }
     /**
      * 分页条件获取图片封装类列表（用户用、脱敏）
@@ -229,25 +237,35 @@ public class PictureController {
                 throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间权限");
             }
         }
-        // 构建缓存的key
-        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
-        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
-        String cacheKey = String.format("yunpicture:%s:%s", "listPictureVOByPage", hashKey);
-        // 查询缓存
-        String cacheValue = (String) cacheManager.getCacheData(cacheKey);
-        if (cacheValue != null) {
-            //缓存命中，缓存结果返回
-            Page<PictureVO> cachePage = JSONUtil.toBean(cacheValue, Page.class);
-            return ResultUtils.success(cachePage);
+        //公共空间才查询缓存
+        String cacheKey = null;
+        String cacheValue = null;
+        if (spaceId == null) {
+            // 构建缓存的key
+            String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
+            String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
+            cacheKey = String.format("yunpicture:%s:%s", "listPictureVOByPage", hashKey);
+            // 查询缓存
+            cacheValue = (String) cacheManager.getCacheData(cacheKey);
+            if (cacheValue != null) {
+                //缓存命中，缓存结果返回
+                Page<PictureVO> cachePage = JSONUtil.toBean(cacheValue, Page.class);
+                return ResultUtils.success(cachePage);
+            }
         }
+
         // 查询数据库
         Page<Picture> picturePage = pictureService.page(new Page<>(current, size)
                 ,pictureService.getQueryWrapper(pictureQueryRequest));
         Page<PictureVO> picturePageVOList = pictureService.getPictureVOPage(picturePage, request);
-        //存入缓存
-        //设置缓存过期时间(5-10min),防止缓存雪崩
-        int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
-        cacheManager.setCacheData(cacheKey, picturePageVOList, cacheExpireTime);
+
+        if (spaceId == null) {
+            //存入缓存
+            //设置缓存过期时间(5-10min),防止缓存雪崩
+            int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
+            cacheManager.setCacheData(cacheKey, picturePageVOList, cacheExpireTime);
+        }
+
 
         return ResultUtils.success(picturePageVOList);
     }

@@ -160,30 +160,31 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
                 //若为插入或更新私有空间图片，更新空间的使用额度
                 // 计算旧图片的大小，如果 finalOldpicture 为 null，则默认为 0
                 long oldPicSize = 0;
-                if (finalPictureId != null) {
-                    //如果是更新，则删除老图片的存储
-                    this.clearPictureFile(finalOldpicture);
-                    oldPicSize = finalOldpicture.getPicSize();
+                boolean update;
+                if (finalSpaceId != null) {
+                    if (finalPictureId != null) {
+                        //如果是更新，则删除老图片的存储
+                        this.clearPictureFile(finalOldpicture);
+                        oldPicSize = finalOldpicture.getPicSize();
+                        //更新空间的使用额度
+                        update = spaceService.lambdaUpdate()
+                                .eq(Space::getId, finalSpaceId)
+                                .setSql(String.valueOf("totalSize = totalSize + " + picture.getPicSize() + "-" + oldPicSize))
+                                .update();
+                    }else {
+                        //更新空间的使用额度
+                        update = spaceService.lambdaUpdate()
+                                .eq(Space::getId, finalSpaceId)
+                                .setSql("totalCount = totalCount + 1")
+                                .setSql(String.valueOf("totalSize = totalSize + " + picture.getPicSize()))
+                                .update();
+                    }
+                    if (!update) {
+                        throw new BusinessException(ErrorCode.OPERATION_ERROR, "更新空间额度失败");
+                    }
                 }
-
-                //更新空间的使用额度
-                boolean update = spaceService.lambdaUpdate()
-                        .eq(Space::getId, finalSpaceId)
-                        .setSql("totalCount = totalCount + 1")
-                        .setSql(String.valueOf("totalSize = totalSize + " + picture.getPicSize() + "-" + oldPicSize))
-                        .update();
-                if (!update) {
-                    throw new BusinessException(ErrorCode.OPERATION_ERROR, "更新空间额度失败");
-                }
-
                 return picture;
             });
-            if (pictureId != null) {
-                //刷新缓存
-                int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
-                String cacheKey = String.format("yunpicture:%s:%s", "getPictureVOById", oldpicture.getId());
-                cacheManager.setCacheData(cacheKey, picture, cacheExpireTime);
-            }
         }catch (Exception e) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
         }
@@ -242,10 +243,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         // 操作数据库，更新数据
         boolean result = this.updateById(picture);
         ThrowUtils.throwIf(!result, new BusinessException(ErrorCode.OPERATION_ERROR));
-        //刷新缓存
-        int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
-        String cacheKey = String.format("yunpicture:%s:%s", "getPictureVOById", picture.getId());
-        cacheManager.setCacheData(cacheKey, picture, cacheExpireTime);
         return result;
     }
 
