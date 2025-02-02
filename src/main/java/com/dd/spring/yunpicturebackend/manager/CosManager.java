@@ -3,10 +3,7 @@ package com.dd.spring.yunpicturebackend.manager;
 import cn.hutool.core.io.FileUtil;
 import com.dd.spring.yunpicturebackend.config.CosClientConfig;
 import com.qcloud.cos.COSClient;
-import com.qcloud.cos.model.COSObject;
-import com.qcloud.cos.model.GetObjectRequest;
-import com.qcloud.cos.model.PutObjectRequest;
-import com.qcloud.cos.model.PutObjectResult;
+import com.qcloud.cos.model.*;
 import com.qcloud.cos.model.ciModel.persistence.PicOperations;
 import org.springframework.stereotype.Component;
 
@@ -86,9 +83,11 @@ public class CosManager {
     /**
      * 删除对象
      *
-     * @param key  唯一键
+     * @param url  唯一键
      */
-    public void deleteObject(String key) {
+    public void deleteObject(String url) {
+        String key = url.replace(cosClientConfig.getHost(), "");
+        // 执行删除操作
         cosClient.deleteObject(cosClientConfig.getBucket(), key);
     }
 }

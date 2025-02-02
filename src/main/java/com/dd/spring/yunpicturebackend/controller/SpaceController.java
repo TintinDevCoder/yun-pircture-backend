@@ -15,13 +15,17 @@ import com.dd.spring.yunpicturebackend.exception.BusinessException;
 import com.dd.spring.yunpicturebackend.exception.ErrorCode;
 import com.dd.spring.yunpicturebackend.exception.ThrowUtils;
 import com.dd.spring.yunpicturebackend.model.dto.space.*;
+import com.dd.spring.yunpicturebackend.model.entity.Picture;
 import com.dd.spring.yunpicturebackend.model.entity.Space;
 import com.dd.spring.yunpicturebackend.model.entity.User;
 import com.dd.spring.yunpicturebackend.model.vo.space.SpaceVO;
+import com.dd.spring.yunpicturebackend.service.PictureService;
 import com.dd.spring.yunpicturebackend.service.SpaceService;
 import com.dd.spring.yunpicturebackend.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -40,7 +44,10 @@ public class SpaceController {
     private UserService userService;
     @Resource
     private SpaceService spaceService;
-
+    @Resource
+    private TransactionTemplate transactionTemplate;
+    @Autowired
+    private PictureService pictureService;
     //管理员
 
     /**
@@ -203,9 +210,16 @@ public class SpaceController {
         ThrowUtils.throwIf(oldSpace == null, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
         //当前不是创建空间的用户或管理员
         ThrowUtils.throwIf(!oldSpace.getUserId().equals(loginUser.getId()) && ! userService.isAdmin(loginUser), new BusinessException(ErrorCode.NO_AUTH_ERROR));
+        //开启事务
         //操作数据库，删除
-        boolean result = spaceService.removeById(id);
-        ThrowUtils.throwIf(!result, new BusinessException(ErrorCode.OPERATION_ERROR));
+        transactionTemplate.execute(status -> {
+            //删除空间
+            boolean result = spaceService.removeById(id);
+            ThrowUtils.throwIf(!result, new BusinessException(ErrorCode.OPERATION_ERROR));
+            //删除空间下的图片
+            pictureService.lambdaUpdate().eq(Picture::getSpaceId, id).remove();
+            return true;
+        });
         return ResultUtils.success(true);
     }
 

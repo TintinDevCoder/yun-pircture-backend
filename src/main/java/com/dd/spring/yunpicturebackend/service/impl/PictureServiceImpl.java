@@ -158,21 +158,24 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
                 boolean result = this.saveOrUpdate(picture);
                 ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, FileErrorConstant.DATABASE_ERROR);
                 //若为插入或更新私有空间图片，更新空间的使用额度
+                // 计算旧图片的大小，如果 finalOldpicture 为 null，则默认为 0
+                long oldPicSize = 0;
                 if (finalPictureId != null) {
                     //如果是更新，则删除老图片的存储
                     this.clearPictureFile(finalOldpicture);
-                    // 计算旧图片的大小，如果 finalOldpicture 为 null，则默认为 0
-                    long oldPicSize = finalOldpicture.getPicSize();
-                    //更新空间的使用额度
-                    boolean update = spaceService.lambdaUpdate()
-                            .eq(Space::getId, finalSpaceId)
-                            .setSql("totalCount = totalCount + 1")
-                            .setSql(String.valueOf("totalSize = totalSize + " + picture.getPicSize() + "-" + oldPicSize))
-                            .update();
-                    if (!update) {
-                        throw new BusinessException(ErrorCode.OPERATION_ERROR, "更新空间额度失败");
-                    }
+                    oldPicSize = finalOldpicture.getPicSize();
                 }
+
+                //更新空间的使用额度
+                boolean update = spaceService.lambdaUpdate()
+                        .eq(Space::getId, finalSpaceId)
+                        .setSql("totalCount = totalCount + 1")
+                        .setSql(String.valueOf("totalSize = totalSize + " + picture.getPicSize() + "-" + oldPicSize))
+                        .update();
+                if (!update) {
+                    throw new BusinessException(ErrorCode.OPERATION_ERROR, "更新空间额度失败");
+                }
+
                 return picture;
             });
             if (pictureId != null) {
@@ -197,11 +200,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
             //操作数据库，删除
             boolean result = this.removeById(id);
             ThrowUtils.throwIf(!result, new BusinessException(ErrorCode.OPERATION_ERROR));
+            //删除老图片的存储
+            this.clearPictureFile(oldPicture);
             //若为私有空间图片，更新空间的使用额度
             Long spaceId = oldPicture.getSpaceId();
             if (spaceId != null) {
-                //删除老图片的存储
-                this.clearPictureFile(oldPicture);
                 // 计算旧图片的大小，如果 finalOldpicture 为 null，则默认为 0
                 long oldPicSize = oldPicture.getPicSize();
                 //更新空间的使用额度
@@ -214,7 +217,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
                     throw new BusinessException(ErrorCode.OPERATION_ERROR, "更新空间额度失败");
                 }
             }
-            return spaceId;
+            return true;
         });
         return true;
     }
@@ -497,8 +500,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         }
         // 删除原始图片
         cosManager.deleteObject(pictureUrl);
+        log.info("删除原始图片成功: {}", pictureUrl);
         //删除缩略图
         String thumbnailUrl = oldpicture.getThumbnailUrl();
+        log.info("删除缩略图成功: {}", thumbnailUrl);
         if (StrUtil.isNotBlank(thumbnailUrl)) {
             cosManager.deleteObject(thumbnailUrl);
         }
