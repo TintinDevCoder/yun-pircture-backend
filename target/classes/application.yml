@@ -3,7 +3,10 @@ server:
   port: 8123
   servlet:
     context-path: /api
-
+    # cookie 30 天过期
+    session:
+      cookie:
+        max-age: 2592000
 spring:
   application:
     name: yu-picture-backend
@@ -25,6 +28,11 @@ spring:
     host: ${redis.host}
     port: ${redis.port}
     timeout: ${redis.timeout}
+  # session 配置
+  session:
+    store-type: redis
+    # session 30 天过期
+    timeout: 2592000
 
 
 mybatis-plus:

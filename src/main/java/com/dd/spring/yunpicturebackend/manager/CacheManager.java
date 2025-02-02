@@ -126,4 +126,15 @@ public class CacheManager {
         refreshRedisCacheByPrefix(prefix);
         refreshLocalCacheByPrefix(prefix);
     }
+
+    /**
+     * 删除所有缓存
+     */
+    public void deleteAllCache() {
+        localCache.invalidateAll();
+        stringRedisTemplate.execute((RedisCallback<Void>) connection -> {
+            connection.flushDb();
+            return null;
+        });
+    }
 }

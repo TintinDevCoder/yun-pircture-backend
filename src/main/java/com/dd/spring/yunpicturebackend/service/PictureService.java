@@ -2,10 +2,7 @@ package com.dd.spring.yunpicturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dd.spring.yunpicturebackend.model.dto.picture.PictureQueryRequest;
-import com.dd.spring.yunpicturebackend.model.dto.picture.PictureReviewRequest;
-import com.dd.spring.yunpicturebackend.model.dto.picture.PictureUploadByBatchRequest;
-import com.dd.spring.yunpicturebackend.model.dto.picture.PictureUploadRequest;
+import com.dd.spring.yunpicturebackend.model.dto.picture.*;
 import com.dd.spring.yunpicturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.dd.spring.yunpicturebackend.model.entity.User;
@@ -28,7 +25,21 @@ public interface PictureService extends IService<Picture> {
      */
     PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser);
 
+    /**
+     * 删除图片
+     * @param id
+     * @param loginUser
+     * @return
+     */
+    public Boolean deletePicture(Long id, User loginUser);
 
+    /**
+     * 编辑图片
+     * @param pictureEditRequest
+     * @param loginUser
+     * @return
+     */
+    public Boolean editPicture(PictureEditRequest pictureEditRequest, User loginUser);
     /**
      * 获取查询对象
      * @param pictureQueryRequest
@@ -90,4 +101,11 @@ public interface PictureService extends IService<Picture> {
      * @param oldpicture
      */
     void clearPictureFile(Picture oldpicture);
+
+    /**
+     * 校验空间图片的权限
+     * @param picture
+     * @param loginUser
+     */
+    void checkPictureAuth(Picture picture, User loginUser);
 }
