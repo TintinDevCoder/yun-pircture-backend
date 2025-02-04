@@ -1,12 +1,12 @@
-package com.dd.spring.yunpicturebackend.model.entity;
+package com.dd.spring.yunpicturebackend.model.vo.picture;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.util.Date;
-
 import com.dd.spring.yunpicturebackend.model.vo.user.UserVO;
 import lombok.Data;
+
+import java.util.Date;
 
 /**
  * 图片
@@ -14,7 +14,7 @@ import lombok.Data;
  */
 @TableName(value ="share_picture")
 @Data
-public class SharePicture {
+public class SharePictureVO {
     /**
      * id
      */
@@ -99,6 +99,10 @@ public class SharePicture {
      * 图片被保存次数
      */
     private Long saveNum;
+    /**
+     * 创建用户信息
+     */
+    private UserVO user;
     /**
      * 图片主色调
      */

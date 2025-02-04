@@ -108,3 +108,8 @@ create table if not exists share_picture
     INDEX idx_tags (tags),                 -- 提升基于标签的查询性能
     INDEX idx_userId (userId)              -- 提升基于用户 ID 的查询性能
 ) comment '图片' collate = utf8mb4_unicode_ci;
+ALTER TABLE share_picture
+    ADD COLUMN saveNum bigint null comment '图片被保存次数';
+-- 添加新列
+ALTER TABLE share_picture
+    ADD COLUMN picColor varchar(16) null comment '图片主色调';

@@ -5,6 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dd.spring.yunpicturebackend.annotation.AuthCheck;
 import com.dd.spring.yunpicturebackend.api.imagesearch.ImageSearchApiFacade;
@@ -26,6 +27,8 @@ import com.dd.spring.yunpicturebackend.model.entity.Space;
 import com.dd.spring.yunpicturebackend.model.entity.User;
 import com.dd.spring.yunpicturebackend.model.vo.picture.PictureTagCategory;
 import com.dd.spring.yunpicturebackend.model.vo.picture.PictureVO;
+import com.dd.spring.yunpicturebackend.model.vo.picture.SharePictureVO;
+import com.dd.spring.yunpicturebackend.model.vo.user.UserVO;
 import com.dd.spring.yunpicturebackend.service.PictureService;
 import com.dd.spring.yunpicturebackend.service.SharePictureService;
 import com.dd.spring.yunpicturebackend.service.SpaceService;
@@ -388,19 +391,21 @@ public class PictureController {
      * @return
      */
     @GetMapping("/get/share/vo")
-    public BaseResponse<PictureVO> getPictureVOBySharePictureId(@RequestParam("id") Long id, HttpServletRequest request) {
+    public BaseResponse<SharePictureVO> getPictureVOBySharePictureId(@RequestParam("id") Long id, HttpServletRequest request) {
         //校验参数
         ThrowUtils.throwIf(id <= 0, new BusinessException(ErrorCode.PARAMS_ERROR));
-        PictureVO result = new PictureVO();
+        //校验是否分享图片存在
         SharePicture sharePicture = sharePictureService.getById(id);
-        //校验是否存在
-        ThrowUtils.throwIf(sharePicture == null, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
+        ThrowUtils.throwIf(sharePicture == null, ErrorCode.NOT_FOUND_ERROR, "分享图片不存在");
         //封装类
-        Picture picture = new Picture();
-        BeanUtils.copyProperties(sharePicture, picture);
-        result = pictureService.getPictureVO(picture, request);
+        User loginUser = userService.getLoginUser(request);
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(loginUser, userVO);
+        SharePictureVO sharePictureVO = new SharePictureVO();
+        BeanUtils.copyProperties(sharePicture, sharePictureVO);
+        sharePictureVO.setUser(userVO);
         //返回封装类
-        return ResultUtils.success(result);
+        return ResultUtils.success(sharePictureVO);
     }
 
     /**
@@ -433,13 +438,14 @@ public class PictureController {
         BeanUtils.copyProperties(picture, sharePicture);
         sharePicture.setCreateTime(new Date());
         sharePicture.setUpdateTime(new Date());
+        sharePicture.setSaveNum(0L);
         sharePictureService.save(sharePicture);
         return ResultUtils.success(true);
     }
 
     /**
      * 保存分享图片
-     * @param url
+     * @param id
      * @param request
      * @return
      */
@@ -463,6 +469,9 @@ public class PictureController {
         savePicture.setUpdateTime(new Date());
         savePicture.setId(null);
         pictureService.save(savePicture);
+        //更新保存次数
+        SharePicture sharePicture = sharePictureService.getById(id);
+        sharePictureService.lambdaUpdate().eq(SharePicture::getId, id).set(SharePicture::getSaveNum, sharePicture.getSaveNum() + 1).update();
         return ResultUtils.success(true);
     }
         /**
