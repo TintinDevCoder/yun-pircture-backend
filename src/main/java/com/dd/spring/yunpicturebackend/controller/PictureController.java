@@ -5,6 +5,8 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dd.spring.yunpicturebackend.annotation.AuthCheck;
+import com.dd.spring.yunpicturebackend.api.imagesearch.ImageSearchApiFacade;
+import com.dd.spring.yunpicturebackend.api.imagesearch.model.ImageSearchResult;
 import com.dd.spring.yunpicturebackend.common.BaseResponse;
 import com.dd.spring.yunpicturebackend.common.DeleteRequest;
 import com.dd.spring.yunpicturebackend.common.ResultUtils;
@@ -318,6 +320,23 @@ public class PictureController {
         User loginUser = userService.getLoginUser(request);
         PictureVO pictureVO = pictureService.uploadPicture(pictureUploadRequest.getFileUrl(), pictureUploadRequest, loginUser);
         return ResultUtils.success(pictureVO);
+    }
+
+    /**
+     * 以图搜图
+     */
+    @PostMapping("/search/picture")
+    public BaseResponse<List<ImageSearchResult>> searchPictureByPicture(@RequestBody SearchPictureByPictureRequest searchPictureByPictureRequest) {
+        ThrowUtils.throwIf(searchPictureByPictureRequest == null, ErrorCode.PARAMS_ERROR);
+        Long pictureId = searchPictureByPictureRequest.getPictureId();
+        ThrowUtils.throwIf(pictureId == null || pictureId <= 0, ErrorCode.PARAMS_ERROR);
+        Picture picture = pictureService.getById(pictureId);
+        ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
+        // 将图片转换为png格式（腾讯云提供）
+        String url = picture.getUrl() + "?imageMogr2/format/png";
+        // 获取以图搜图结果
+        List<ImageSearchResult> imageSearchResults = ImageSearchApiFacade.searchImage(url);
+        return ResultUtils.success(imageSearchResults);
     }
     /**
      * 删除图片

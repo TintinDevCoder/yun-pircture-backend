@@ -124,6 +124,30 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
             uploadPathPrefix = String.format("space/%s", spaceId);
         }
         //根据inputSource的类型区分上传方式
+        /**
+         * 图片主色调
+         */
+        private String picColor;
+        /**
+         * 图片主色调
+         */
+        private String picColor;
+        /**
+         * 图片主色调
+         */
+        private String picColor;
+        /**
+         * 图片主色调
+         */
+        private String picColor;
+        /**
+         * 图片主色调
+         */
+        private String picColor;
+        /**
+         * 图片主色调
+         */
+        private String picColor;
         UploadPictureResult uploadPictureResult;
         if (inputSource instanceof String) {
             uploadPictureResult = urlPictureUpload.uploadPicture(inputSource, uploadPathPrefix);
