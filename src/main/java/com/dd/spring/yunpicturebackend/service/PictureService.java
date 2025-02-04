@@ -70,8 +70,6 @@ public interface PictureService extends IService<Picture> {
      */
     public void validPicture(Picture picture);
 
-
-
     /**
      * 图片审核
      * @param pictureReviewRequest

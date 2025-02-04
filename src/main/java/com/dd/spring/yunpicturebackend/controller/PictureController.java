@@ -1,6 +1,7 @@
 package com.dd.spring.yunpicturebackend.controller;
 
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -13,17 +14,20 @@ import com.dd.spring.yunpicturebackend.common.DeleteRequest;
 import com.dd.spring.yunpicturebackend.common.ResultUtils;
 import com.dd.spring.yunpicturebackend.constant.UserConstant;
 import com.dd.spring.yunpicturebackend.enums.PictureReviewStatusEnum;
+import com.dd.spring.yunpicturebackend.enums.UserRoleEnum;
 import com.dd.spring.yunpicturebackend.exception.BusinessException;
 import com.dd.spring.yunpicturebackend.exception.ErrorCode;
 import com.dd.spring.yunpicturebackend.exception.ThrowUtils;
 import com.dd.spring.yunpicturebackend.manager.CacheManager;
 import com.dd.spring.yunpicturebackend.model.dto.picture.*;
 import com.dd.spring.yunpicturebackend.model.entity.Picture;
+import com.dd.spring.yunpicturebackend.model.entity.SharePicture;
 import com.dd.spring.yunpicturebackend.model.entity.Space;
 import com.dd.spring.yunpicturebackend.model.entity.User;
 import com.dd.spring.yunpicturebackend.model.vo.picture.PictureTagCategory;
 import com.dd.spring.yunpicturebackend.model.vo.picture.PictureVO;
 import com.dd.spring.yunpicturebackend.service.PictureService;
+import com.dd.spring.yunpicturebackend.service.SharePictureService;
 import com.dd.spring.yunpicturebackend.service.SpaceService;
 import com.dd.spring.yunpicturebackend.service.UserService;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -52,6 +56,8 @@ public class PictureController {
     private UserService userService;
     @Resource
     private PictureService pictureService;
+    @Resource
+    private SharePictureService sharePictureService;
     @Resource
     private CacheManager cacheManager;
     @Resource
@@ -190,6 +196,7 @@ public class PictureController {
         //返回封装类
         return ResultUtils.success(result);
     }
+
     /**
      * 分页条件获取图片封装类列表（用户用、脱敏）
      * @param pictureQueryRequest
@@ -281,7 +288,7 @@ public class PictureController {
     @PostMapping("/edit")
     public BaseResponse<Boolean> editPicture(@RequestBody PictureEditRequest pictureEditRequest,
                                              HttpServletRequest request) {
-        ThrowUtils.throwIf(pictureEditRequest == null ||pictureEditRequest.getId() <= 0, new BusinessException(ErrorCode.PARAMS_ERROR));
+        ThrowUtils.throwIf(pictureEditRequest == null || pictureEditRequest.getId() <= 0, new BusinessException(ErrorCode.PARAMS_ERROR));
         User loginUser = userService.getLoginUser(request);
         Boolean result = pictureService.editPicture(pictureEditRequest, loginUser);
         return ResultUtils.success(result);
@@ -374,11 +381,94 @@ public class PictureController {
         pictureService.deletePicture(id, loginUser);
         return ResultUtils.success(true);
     }
-
     /**
-     * 获取标签
+     * 根据id查询分享图片(每天0点更新)
+     * @param id
+     * @param request
      * @return
      */
+    @GetMapping("/get/share/vo")
+    public BaseResponse<PictureVO> getPictureVOBySharePictureId(@RequestParam("id") Long id, HttpServletRequest request) {
+        //校验参数
+        ThrowUtils.throwIf(id <= 0, new BusinessException(ErrorCode.PARAMS_ERROR));
+        PictureVO result = new PictureVO();
+        SharePicture sharePicture = sharePictureService.getById(id);
+        //校验是否存在
+        ThrowUtils.throwIf(sharePicture == null, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
+        //封装类
+        Picture picture = new Picture();
+        BeanUtils.copyProperties(sharePicture, picture);
+        result = pictureService.getPictureVO(picture, request);
+        //返回封装类
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 设置分享图片
+     * @param url
+     * @param request
+     * @return
+     */
+    @PostMapping("/set/share")
+    public BaseResponse<Boolean> setSharePictureById(@RequestParam("url") String url, HttpServletRequest request) {
+        //校验参数
+        ThrowUtils.throwIf(StrUtil.isBlank(url), new BusinessException(ErrorCode.PARAMS_ERROR));
+        Long id = Long.parseLong(url.substring(url.lastIndexOf("/") + 1));
+        ThrowUtils.throwIf(id == null || id <= 0, new BusinessException(ErrorCode.PARAMS_ERROR));
+        Picture picture = pictureService.getById(id);
+        //校验是否存在
+        ThrowUtils.throwIf(picture == null, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
+        User loginUser = userService.getLoginUser(request);
+        String userRole = loginUser.getUserRole();
+        UserRoleEnum userRoleEnum = UserRoleEnum.getEnumByValue(userRole);
+        //校验权限
+        ThrowUtils.throwIf(loginUser == null || (!loginUser.getId().equals(picture.getUserId()) && userRoleEnum != UserRoleEnum.ADMIN), new BusinessException(ErrorCode.NO_AUTH_ERROR));
+        //判断是否已经分享
+        boolean exists = sharePictureService.exists(new QueryWrapper<SharePicture>().eq("id", id));
+        if (exists) {
+            return ResultUtils.success(true);
+        }
+        //保存分享图片
+        SharePicture sharePicture = new SharePicture();
+        BeanUtils.copyProperties(picture, sharePicture);
+        sharePicture.setCreateTime(new Date());
+        sharePicture.setUpdateTime(new Date());
+        sharePictureService.save(sharePicture);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 保存分享图片
+     * @param url
+     * @param request
+     * @return
+     */
+    @PostMapping("/save/share")
+    public BaseResponse<Boolean> saveSharePicture(@RequestParam("id") Long id, HttpServletRequest request) {
+        //校验参数
+        ThrowUtils.throwIf(id == null || id <= 0, new BusinessException(ErrorCode.PARAMS_ERROR));
+        //校验是否存在
+        Picture picture = pictureService.getById(id);
+        ThrowUtils.throwIf(picture == null, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser == null, new BusinessException(ErrorCode.NO_AUTH_ERROR));
+        //查看是否已经有空间
+        Space exists = spaceService.lambdaQuery().eq(Space::getUserId, loginUser.getId()).one();
+        ThrowUtils.throwIf(exists == null, new BusinessException(ErrorCode.OPERATION_ERROR, "请先创建空间"));
+        Picture savePicture = new Picture();
+        BeanUtils.copyProperties(picture, savePicture);
+        savePicture.setSpaceId(exists.getId());
+        savePicture.setUserId(loginUser.getId());
+        savePicture.setCreateTime(new Date());
+        savePicture.setUpdateTime(new Date());
+        savePicture.setId(null);
+        pictureService.save(savePicture);
+        return ResultUtils.success(true);
+    }
+        /**
+         * 获取标签
+         * @return
+         */
     @GetMapping("/tag_category")
     public BaseResponse<PictureTagCategory> listPictureTagCategory() {
         PictureTagCategory pictureTagCategory = new PictureTagCategory();
