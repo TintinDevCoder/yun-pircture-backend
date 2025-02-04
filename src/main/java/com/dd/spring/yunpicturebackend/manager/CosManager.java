@@ -1,14 +1,22 @@
 package com.dd.spring.yunpicturebackend.manager;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.json.JSONUtil;
 import com.dd.spring.yunpicturebackend.config.CosClientConfig;
+import com.dd.spring.yunpicturebackend.exception.BusinessException;
+import com.dd.spring.yunpicturebackend.exception.ErrorCode;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.model.*;
 import com.qcloud.cos.model.ciModel.persistence.PicOperations;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -89,5 +97,25 @@ public class CosManager {
         String key = url.replace(cosClientConfig.getHost(), "");
         // 执行删除操作
         cosClient.deleteObject(cosClientConfig.getBucket(), key);
+    }
+    /**
+     * 获取图片主色调
+     *
+     * @param key 文件 key
+     * @return 图片主色调
+     */
+    public String getImageAve(String key) {
+        GetObjectRequest getObj = new GetObjectRequest(cosClientConfig.getBucket(), key);
+        String rule = "imageAve";
+        getObj.putCustomQueryParameter(rule, null);
+        COSObject object = cosClient.getObject(getObj);
+        COSObjectInputStream objectContent = object.getObjectContent();
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            CloseableHttpResponse httpResponse = httpClient.execute(objectContent.getHttpRequest());
+            String response = EntityUtils.toString(httpResponse.getEntity());
+            return JSONUtil.parseObj(response).getStr("RGB");
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+        }
     }
 }

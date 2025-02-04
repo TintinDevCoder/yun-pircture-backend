@@ -31,7 +31,15 @@ import com.dd.spring.yunpicturebackend.service.PictureService;
 import com.dd.spring.yunpicturebackend.mapper.PictureMapper;
 import com.dd.spring.yunpicturebackend.service.SpaceService;
 import com.dd.spring.yunpicturebackend.service.UserService;
+import com.dd.spring.yunpicturebackend.utils.ColorSimilarUtils;
+import com.qcloud.cos.model.COSObject;
+import com.qcloud.cos.model.COSObjectInputStream;
+import com.qcloud.cos.model.GetObjectRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
@@ -41,11 +49,11 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.awt.*;
 import java.io.IOException;
-import java.util.Date;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -124,30 +132,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
             uploadPathPrefix = String.format("space/%s", spaceId);
         }
         //根据inputSource的类型区分上传方式
-        /**
-         * 图片主色调
-         */
-        private String picColor;
-        /**
-         * 图片主色调
-         */
-        private String picColor;
-        /**
-         * 图片主色调
-         */
-        private String picColor;
-        /**
-         * 图片主色调
-         */
-        private String picColor;
-        /**
-         * 图片主色调
-         */
-        private String picColor;
-        /**
-         * 图片主色调
-         */
-        private String picColor;
         UploadPictureResult uploadPictureResult;
         if (inputSource instanceof String) {
             uploadPictureResult = urlPictureUpload.uploadPicture(inputSource, uploadPathPrefix);
@@ -161,6 +145,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         picture.setUserId(loginUser.getId());
         picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
         picture.setSpaceId(spaceId); //空间id
+        picture.setPicColor(uploadPictureResult.getPicColor()); //图片主色调
         //支持外层传递图片名称
         if (pictureUploadRequest != null && StrUtil.isNotBlank(pictureUploadRequest.getPicName())) {
             picture.setName(pictureUploadRequest.getPicName());
@@ -551,6 +536,85 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         }
     }
 
+    /**
+     * 根据颜色搜索图片(个人空间)
+     * @param spaceId
+     * @param picColor
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public List<PictureVO> searchPictureByColor(Long spaceId, String picColor, User loginUser) {
+        // 校验参数
+        ThrowUtils.throwIf(spaceId == null || StrUtil.isBlank(picColor), ErrorCode.PARAMS_ERROR);
+        // 校验空间权限
+        Space space = spaceService.getById(spaceId);
+        ThrowUtils.throwIf(space == null || loginUser == null || !space.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "空间不存在或无权限");
+        // 查询该空间下的所有图片（必须要有主色调）
+        List<Picture> pictureList = this.lambdaQuery()
+                .eq(Picture::getSpaceId, spaceId)
+                .isNotNull(Picture::getPicColor)
+                .list();
+        // 没有图片，直接返回空列表
+        if (CollUtil.isEmpty(pictureList)) {
+            return CollUtil.newArrayList();
+        }
+        // 将颜色转换成主色调
+        Color targetColor = Color.decode(picColor);
+        // 计算相似度并排序
+        List<Picture> pictureVOList = pictureList.stream()
+                .sorted(Comparator.comparingDouble(picture -> {
+                    String hexColor = picture.getPicColor();
+                    //没有主色调的图片就会默认排序到最后
+                    if (StrUtil.isBlank(hexColor)) {
+                        return Double.MAX_VALUE;
+                    }
+                    Color pictureColor = Color.decode(hexColor);
+                    //计算相似度
+                    return -ColorSimilarUtils.calculateSimilarity(targetColor, pictureColor);
+                }))
+                .limit(12)//最多返回12条
+                .collect(Collectors.toList());
+        // 返回结果
+        return pictureVOList.stream().map(PictureVO::objToVo).collect(Collectors.toList());
+    }
+    /**
+     * 根据颜色搜索图片(主页)
+     * @param picColor
+     * @return
+     */
+    @Override
+    public List<PictureVO> searchPictureByColor(String picColor) {
+        // 校验参数
+        ThrowUtils.throwIf(StrUtil.isBlank(picColor), ErrorCode.PARAMS_ERROR);
+        // 查询该空间下的所有图片（必须要有主色调）
+        List<Picture> pictureList = this.lambdaQuery()
+                .isNull(Picture::getSpaceId)
+                .isNotNull(Picture::getPicColor)
+                .list();
+        // 没有图片，直接返回空列表
+        if (CollUtil.isEmpty(pictureList)) {
+            return CollUtil.newArrayList();
+        }
+        // 将颜色转换成主色调
+        Color targetColor = Color.decode(picColor);
+        // 计算相似度并排序
+        List<Picture> pictureVOList = pictureList.stream()
+                .sorted(Comparator.comparingDouble(picture -> {
+                    String hexColor = picture.getPicColor();
+                    //没有主色调的图片就会默认排序到最后
+                    if (StrUtil.isBlank(hexColor)) {
+                        return Double.MAX_VALUE;
+                    }
+                    Color pictureColor = Color.decode(hexColor);
+                    //计算相似度
+                    return -ColorSimilarUtils.calculateSimilarity(targetColor, pictureColor);
+                }))
+                .limit(12)//最多返回12条
+                .collect(Collectors.toList());
+        // 返回结果
+        return pictureVOList.stream().map(PictureVO::objToVo).collect(Collectors.toList());
+    }
 }
 
 

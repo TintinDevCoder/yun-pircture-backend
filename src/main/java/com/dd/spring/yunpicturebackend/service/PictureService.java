@@ -9,6 +9,7 @@ import com.dd.spring.yunpicturebackend.model.entity.User;
 import com.dd.spring.yunpicturebackend.model.vo.picture.PictureVO;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
 * @author DELL
@@ -108,4 +109,20 @@ public interface PictureService extends IService<Picture> {
      * @param loginUser
      */
     void checkPictureAuth(Picture picture, User loginUser);
+
+    /**
+     * 根据颜色搜索图片（个人空间）
+     * @param spaceId
+     * @param picColor
+     * @param loginUser
+     * @return
+     */
+    List<PictureVO> searchPictureByColor(Long spaceId, String picColor, User loginUser);
+
+    /**
+     * 根据颜色搜索图片(主页)
+     * @param picColor
+     * @return
+     */
+    public List<PictureVO> searchPictureByColor(String picColor);
 }

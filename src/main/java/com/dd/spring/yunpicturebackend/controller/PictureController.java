@@ -1,6 +1,7 @@
 package com.dd.spring.yunpicturebackend.controller;
 
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.http.HttpRequest;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -337,6 +338,26 @@ public class PictureController {
         // 获取以图搜图结果
         List<ImageSearchResult> imageSearchResults = ImageSearchApiFacade.searchImage(url);
         return ResultUtils.success(imageSearchResults);
+    }
+    /**
+     * 按照颜色搜索图片(个人空间)
+     */
+    @PostMapping("/search/color")
+    public BaseResponse<List<PictureVO>> searchPictureByColor(@RequestBody SearchPictureByColorRequest searchPictureByColorRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(searchPictureByColorRequest == null, ErrorCode.PARAMS_ERROR);
+        Long spaceId = searchPictureByColorRequest.getSpaceId();
+        String picColor = searchPictureByColorRequest.getPicColor();
+        User loginUser = userService.getLoginUser(request);
+        List<PictureVO> pictureVOS = pictureService.searchPictureByColor(spaceId, picColor, loginUser);
+        return ResultUtils.success(pictureVOS);
+    }
+    /**
+     * 按照颜色搜索图片（主页）
+     */
+    @PostMapping("/public/search/color")
+    public BaseResponse<List<PictureVO>> searchPublicPictureByColor(String picColor) {
+        List<PictureVO> pictureVOS = pictureService.searchPictureByColor(picColor);
+        return ResultUtils.success(pictureVOS);
     }
     /**
      * 删除图片

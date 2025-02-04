@@ -5,19 +5,29 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.json.JSONUtil;
 import com.dd.spring.yunpicturebackend.config.CosClientConfig;
 import com.dd.spring.yunpicturebackend.exception.BusinessException;
 import com.dd.spring.yunpicturebackend.exception.ErrorCode;
 import com.dd.spring.yunpicturebackend.manager.CosManager;
 import com.dd.spring.yunpicturebackend.model.dto.file.UploadPictureResult;
+import com.qcloud.cos.COSClient;
+import com.qcloud.cos.model.COSObject;
+import com.qcloud.cos.model.COSObjectInputStream;
+import com.qcloud.cos.model.GetObjectRequest;
 import com.qcloud.cos.model.PutObjectResult;
 import com.qcloud.cos.model.ciModel.persistence.CIObject;
 import com.qcloud.cos.model.ciModel.persistence.ImageInfo;
 import com.qcloud.cos.model.ciModel.persistence.ProcessResults;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 
 import javax.annotation.Resource;
 import java.io.File;
+import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 
@@ -54,6 +64,8 @@ public abstract class PictureUploadTemplate {
             //获取到图片处理结果
             ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
             List<CIObject> objectList = processResults.getObjectList();
+            //获取到原始图片
+            ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
             if (CollUtil.isNotEmpty(objectList)) {
                 //获取到压缩之后的文件信息
                 CIObject compressedCiObject = objectList.get(0);
@@ -63,12 +75,10 @@ public abstract class PictureUploadTemplate {
                     thumbnailCiObject = objectList.get(1);
                 }
                 //封装压缩图的返回结果
-                return buildResult(originFilename, compressedCiObject, thumbnailCiObject);
+                return buildResult(originFilename, compressedCiObject, thumbnailCiObject, imageInfo);
             }
-            //获取到原始图片
-            ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
-            // 5. 封装返回结果  
-            return buildResult(originFilename, file, uploadPath, imageInfo);  
+            // 5. 封装返回结果
+            return buildResult(originFilename, file, uploadPath, imageInfo);
         } catch (Exception e) {  
             log.error("图片上传到对象存储失败", e);  
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
@@ -103,7 +113,8 @@ public abstract class PictureUploadTemplate {
      * @param thumbnailCiObject
      * @return
      */
-    private UploadPictureResult buildResult(String originFilename, CIObject compressedCiObject, CIObject thumbnailCiObject) {
+    private UploadPictureResult buildResult(String originFilename, CIObject compressedCiObject, CIObject thumbnailCiObject,
+                                            ImageInfo imageInfo) {
         UploadPictureResult uploadPictureResult = new UploadPictureResult();
         int picWidth = compressedCiObject.getWidth();
         int picHeight = compressedCiObject.getHeight();
@@ -114,19 +125,23 @@ public abstract class PictureUploadTemplate {
         uploadPictureResult.setPicScale(picScale);
         uploadPictureResult.setPicFormat(compressedCiObject.getFormat());
         uploadPictureResult.setPicSize(Long.valueOf(compressedCiObject.getSize()));
+        //获取图片主色调
+        String imageAve = cosManager.getImageAve(compressedCiObject.getKey());
+        uploadPictureResult.setPicColor(imageAve);
         //设置压缩后的原图地址
         uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + compressedCiObject.getKey());
         //设置缩略图地址
         uploadPictureResult.setThumbnailUrl(cosClientConfig.getHost() + "/" + thumbnailCiObject.getKey());
         return uploadPictureResult;
     }
+
     /**  
      * 封装返回结果（原始图片）
-     */  
-    private UploadPictureResult buildResult(String originFilename, File file, String uploadPath, ImageInfo imageInfo) {  
-        UploadPictureResult uploadPictureResult = new UploadPictureResult();  
-        int picWidth = imageInfo.getWidth();  
-        int picHeight = imageInfo.getHeight();  
+     */
+    private UploadPictureResult buildResult(String originFilename, File file, String uploadPath, ImageInfo imageInfo) {
+        UploadPictureResult uploadPictureResult = new UploadPictureResult();
+        int picWidth = imageInfo.getWidth();
+        int picHeight = imageInfo.getHeight();
         double picScale = NumberUtil.round(picWidth * 1.0 / picHeight, 2).doubleValue();
         uploadPictureResult.setPicName(FileUtil.mainName(originFilename));  
         uploadPictureResult.setPicWidth(picWidth);  
@@ -134,7 +149,10 @@ public abstract class PictureUploadTemplate {
         uploadPictureResult.setPicScale(picScale);  
         uploadPictureResult.setPicFormat(imageInfo.getFormat());  
         uploadPictureResult.setPicSize(FileUtil.size(file));  
-        uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + uploadPath);  
+        uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + uploadPath);
+        //获取图片主色调
+        String imageAve = cosManager.getImageAve(uploadPath);
+        uploadPictureResult.setPicColor(imageAve);
         return uploadPictureResult;  
     }  
   
@@ -149,5 +167,7 @@ public abstract class PictureUploadTemplate {
         if (!deleteResult) {  
             log.error("file delete error, filepath = {}", file.getAbsolutePath());  
         }  
-    }  
+    }
+
+
 }
