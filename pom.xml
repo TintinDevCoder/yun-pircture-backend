@@ -141,7 +141,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring-boot.version}</version>
                 <configuration>
-                    <mainClass>com.dd.spring.yunpicturebackend.YunPictureBackendApplication</mainClass>
+                    <mainClass>com.dd.yunpicturebackend.YunPictureBackendApplication</mainClass>
                     <skip>true</skip>
                 </configuration>
                 <executions>
