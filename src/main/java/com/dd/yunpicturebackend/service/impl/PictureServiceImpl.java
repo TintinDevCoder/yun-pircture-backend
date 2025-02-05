@@ -20,7 +20,7 @@ import com.dd.yunpicturebackend.manager.CosManager;
 import com.dd.yunpicturebackend.manager.upload.FilePictureUploadImpl;
 import com.dd.yunpicturebackend.manager.upload.UrlPictureUploadImpl;
 import com.dd.yunpicturebackend.model.dto.file.UploadPictureResult;
-import com.dd.spring.yunpicturebackend.model.dto.picture.*;
+import com.dd.yunpicturebackend.model.dto.picture.*;
 import com.dd.yunpicturebackend.model.dto.picture.*;
 import com.dd.yunpicturebackend.model.entity.Picture;
 import com.dd.yunpicturebackend.model.entity.Space;

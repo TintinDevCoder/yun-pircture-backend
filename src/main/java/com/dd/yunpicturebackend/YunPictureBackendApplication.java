@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableAsync //开启异步支持
-@MapperScan("com.dd.spring.yunpicturebackend.mapper")
+@MapperScan("com.dd.yunpicturebackend.mapper")
 @SpringBootApplication
 @EnableAspectJAutoProxy(exposeProxy = true)
 @EnableScheduling //定时任务

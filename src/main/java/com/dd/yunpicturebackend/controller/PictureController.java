@@ -21,7 +21,7 @@ import com.dd.yunpicturebackend.exception.BusinessException;
 import com.dd.yunpicturebackend.exception.ErrorCode;
 import com.dd.yunpicturebackend.exception.ThrowUtils;
 import com.dd.yunpicturebackend.manager.CacheManager;
-import com.dd.spring.yunpicturebackend.model.dto.picture.*;
+import com.dd.yunpicturebackend.model.dto.picture.*;
 import com.dd.yunpicturebackend.model.dto.picture.*;
 import com.dd.yunpicturebackend.model.entity.Picture;
 import com.dd.yunpicturebackend.model.entity.SharePicture;

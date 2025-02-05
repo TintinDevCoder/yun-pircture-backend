@@ -3,7 +3,7 @@ package com.dd.yunpicturebackend.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dd.yunpicturebackend.api.aliyunai.model.CreateOutPaintingTaskResponse;
-import com.dd.spring.yunpicturebackend.model.dto.picture.*;
+import com.dd.yunpicturebackend.model.dto.picture.*;
 import com.dd.yunpicturebackend.model.dto.picture.*;
 import com.dd.yunpicturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;

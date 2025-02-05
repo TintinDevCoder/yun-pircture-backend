@@ -56,7 +56,7 @@ knife4j:
       default:
         api-rule: package
         api-rule-resources:
-          - com.dd.spring.yunpicturebackend.controller
+          - com.dd.yunpicturebackend.controller
 # 对象存储配置（需要从腾讯云获取）
 cos:
   client:

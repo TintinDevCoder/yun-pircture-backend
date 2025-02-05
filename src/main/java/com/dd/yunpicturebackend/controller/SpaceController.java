@@ -12,7 +12,7 @@ import com.dd.yunpicturebackend.enums.SpaceLevelEnum;
 import com.dd.yunpicturebackend.exception.BusinessException;
 import com.dd.yunpicturebackend.exception.ErrorCode;
 import com.dd.yunpicturebackend.exception.ThrowUtils;
-import com.dd.spring.yunpicturebackend.model.dto.space.*;
+import com.dd.yunpicturebackend.model.dto.space.*;
 import com.dd.yunpicturebackend.model.dto.space.*;
 import com.dd.yunpicturebackend.model.entity.Picture;
 import com.dd.yunpicturebackend.model.entity.Space;

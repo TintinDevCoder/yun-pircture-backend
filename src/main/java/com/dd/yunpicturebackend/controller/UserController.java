@@ -9,7 +9,7 @@ import com.dd.yunpicturebackend.constant.UserConstant;
 import com.dd.yunpicturebackend.exception.BusinessException;
 import com.dd.yunpicturebackend.exception.ErrorCode;
 import com.dd.yunpicturebackend.exception.ThrowUtils;
-import com.dd.spring.yunpicturebackend.model.dto.user.*;
+import com.dd.yunpicturebackend.model.dto.user.*;
 import com.dd.yunpicturebackend.model.dto.user.*;
 import com.dd.yunpicturebackend.model.entity.User;
 import com.dd.yunpicturebackend.model.vo.user.UserLoginVO;
