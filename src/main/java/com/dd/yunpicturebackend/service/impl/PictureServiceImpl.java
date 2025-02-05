@@ -1,45 +1,38 @@
-package com.dd.spring.yunpicturebackend.service.impl;
+package com.dd.yunpicturebackend.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
-import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.dd.spring.yunpicturebackend.common.BaseResponse;
-import com.dd.spring.yunpicturebackend.common.DeleteRequest;
-import com.dd.spring.yunpicturebackend.common.ResultUtils;
-import com.dd.spring.yunpicturebackend.constant.error.FileErrorConstant;
-import com.dd.spring.yunpicturebackend.enums.PictureReviewStatusEnum;
-import com.dd.spring.yunpicturebackend.exception.BusinessException;
-import com.dd.spring.yunpicturebackend.exception.ErrorCode;
-import com.dd.spring.yunpicturebackend.exception.ThrowUtils;
-import com.dd.spring.yunpicturebackend.manager.CacheManager;
-import com.dd.spring.yunpicturebackend.manager.CosManager;
-import com.dd.spring.yunpicturebackend.manager.upload.FilePictureUploadImpl;
-import com.dd.spring.yunpicturebackend.manager.upload.UrlPictureUploadImpl;
-import com.dd.spring.yunpicturebackend.model.dto.file.UploadPictureResult;
+import com.dd.yunpicturebackend.api.aliyunai.AliYunAiApi;
+import com.dd.yunpicturebackend.api.aliyunai.model.CreateOutPaintingTaskRequest;
+import com.dd.yunpicturebackend.api.aliyunai.model.CreateOutPaintingTaskResponse;
+import com.dd.yunpicturebackend.constant.error.FileErrorConstant;
+import com.dd.yunpicturebackend.enums.PictureReviewStatusEnum;
+import com.dd.yunpicturebackend.exception.BusinessException;
+import com.dd.yunpicturebackend.exception.ErrorCode;
+import com.dd.yunpicturebackend.exception.ThrowUtils;
+import com.dd.yunpicturebackend.manager.CacheManager;
+import com.dd.yunpicturebackend.manager.CosManager;
+import com.dd.yunpicturebackend.manager.upload.FilePictureUploadImpl;
+import com.dd.yunpicturebackend.manager.upload.UrlPictureUploadImpl;
+import com.dd.yunpicturebackend.model.dto.file.UploadPictureResult;
 import com.dd.spring.yunpicturebackend.model.dto.picture.*;
-import com.dd.spring.yunpicturebackend.model.entity.Picture;
-import com.dd.spring.yunpicturebackend.model.entity.Space;
-import com.dd.spring.yunpicturebackend.model.entity.User;
-import com.dd.spring.yunpicturebackend.model.vo.picture.PictureVO;
-import com.dd.spring.yunpicturebackend.model.vo.user.UserVO;
-import com.dd.spring.yunpicturebackend.service.PictureService;
-import com.dd.spring.yunpicturebackend.mapper.PictureMapper;
-import com.dd.spring.yunpicturebackend.service.SpaceService;
-import com.dd.spring.yunpicturebackend.service.UserService;
-import com.dd.spring.yunpicturebackend.utils.ColorSimilarUtils;
-import com.qcloud.cos.model.COSObject;
-import com.qcloud.cos.model.COSObjectInputStream;
-import com.qcloud.cos.model.GetObjectRequest;
+import com.dd.yunpicturebackend.model.dto.picture.*;
+import com.dd.yunpicturebackend.model.entity.Picture;
+import com.dd.yunpicturebackend.model.entity.Space;
+import com.dd.yunpicturebackend.model.entity.User;
+import com.dd.yunpicturebackend.model.vo.picture.PictureVO;
+import com.dd.yunpicturebackend.model.vo.user.UserVO;
+import com.dd.yunpicturebackend.service.PictureService;
+import com.dd.yunpicturebackend.mapper.PictureMapper;
+import com.dd.yunpicturebackend.service.SpaceService;
+import com.dd.yunpicturebackend.service.UserService;
+import com.dd.yunpicturebackend.utils.ColorSimilarUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
@@ -53,13 +46,11 @@ import java.awt.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.web.bind.annotation.RequestBody;
 
 /**
 * @author DELL
@@ -83,6 +74,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
     private SpaceService spaceService;
     @Resource
     private TransactionTemplate transactionTemplate;
+    @Resource
+    private AliYunAiApi aliYunAiApi;
     @Override
     public PictureVO uploadPicture(Object inputSource,
                                    PictureUploadRequest pictureUploadRequest,
@@ -672,6 +665,24 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "名称解析失败");
         }
 
+    }
+
+    @Override
+    public CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser) {
+        Long pictureId = createPictureOutPaintingTaskRequest.getPictureId();
+        //校验图片是否存在
+        Picture picture = Optional.ofNullable(this.getById(pictureId))
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND_ERROR, "图片不存在"));
+        //校验权限
+        checkPictureAuth(picture, loginUser);
+        //创建扩图任务
+        CreateOutPaintingTaskRequest createOutPaintingTaskRequest = new CreateOutPaintingTaskRequest();
+        CreateOutPaintingTaskRequest.Input input = new CreateOutPaintingTaskRequest.Input();
+        input.setImageUrl(picture.getUrl());
+        createOutPaintingTaskRequest.setInput(input);
+        createOutPaintingTaskRequest.setParameters(createPictureOutPaintingTaskRequest.getParameters());
+        //调用扩图接口
+        return aliYunAiApi.createOutPaintingTask(createOutPaintingTaskRequest);
     }
 }
 

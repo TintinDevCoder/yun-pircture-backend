@@ -1,12 +1,14 @@
-package com.dd.spring.yunpicturebackend.service;
+package com.dd.yunpicturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.dd.yunpicturebackend.api.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.dd.spring.yunpicturebackend.model.dto.picture.*;
-import com.dd.spring.yunpicturebackend.model.entity.Picture;
+import com.dd.yunpicturebackend.model.dto.picture.*;
+import com.dd.yunpicturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.dd.spring.yunpicturebackend.model.entity.User;
-import com.dd.spring.yunpicturebackend.model.vo.picture.PictureVO;
+import com.dd.yunpicturebackend.model.entity.User;
+import com.dd.yunpicturebackend.model.vo.picture.PictureVO;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -137,4 +139,13 @@ public interface PictureService extends IService<Picture> {
      * @param nameRule
      */
     public void fillPictureWithNameRule(List<Picture> pictureList, String nameRule);
+
+    /**
+     * 图片Ai扩图
+     *
+     * @param createPictureOutPaintingTaskRequest
+     * @param loginUser
+     * @return
+     */
+    public CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
 }

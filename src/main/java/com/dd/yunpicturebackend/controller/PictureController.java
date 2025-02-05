@@ -1,45 +1,44 @@
-package com.dd.spring.yunpicturebackend.controller;
+package com.dd.yunpicturebackend.controller;
 
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.HttpRequest;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dd.spring.yunpicturebackend.annotation.AuthCheck;
-import com.dd.spring.yunpicturebackend.api.imagesearch.ImageSearchApiFacade;
-import com.dd.spring.yunpicturebackend.api.imagesearch.model.ImageSearchResult;
-import com.dd.spring.yunpicturebackend.common.BaseResponse;
-import com.dd.spring.yunpicturebackend.common.DeleteRequest;
-import com.dd.spring.yunpicturebackend.common.ResultUtils;
-import com.dd.spring.yunpicturebackend.constant.UserConstant;
-import com.dd.spring.yunpicturebackend.enums.PictureReviewStatusEnum;
-import com.dd.spring.yunpicturebackend.enums.UserRoleEnum;
-import com.dd.spring.yunpicturebackend.exception.BusinessException;
-import com.dd.spring.yunpicturebackend.exception.ErrorCode;
-import com.dd.spring.yunpicturebackend.exception.ThrowUtils;
-import com.dd.spring.yunpicturebackend.manager.CacheManager;
+import com.dd.yunpicturebackend.annotation.AuthCheck;
+import com.dd.yunpicturebackend.api.aliyunai.AliYunAiApi;
+import com.dd.yunpicturebackend.api.aliyunai.model.CreateOutPaintingTaskResponse;
+import com.dd.yunpicturebackend.api.aliyunai.model.GetOutPaintingTaskResponse;
+import com.dd.yunpicturebackend.api.imagesearch.ImageSearchApiFacade;
+import com.dd.yunpicturebackend.api.imagesearch.model.ImageSearchResult;
+import com.dd.yunpicturebackend.common.BaseResponse;
+import com.dd.yunpicturebackend.common.DeleteRequest;
+import com.dd.yunpicturebackend.common.ResultUtils;
+import com.dd.yunpicturebackend.constant.UserConstant;
+import com.dd.yunpicturebackend.enums.PictureReviewStatusEnum;
+import com.dd.yunpicturebackend.enums.UserRoleEnum;
+import com.dd.yunpicturebackend.exception.BusinessException;
+import com.dd.yunpicturebackend.exception.ErrorCode;
+import com.dd.yunpicturebackend.exception.ThrowUtils;
+import com.dd.yunpicturebackend.manager.CacheManager;
 import com.dd.spring.yunpicturebackend.model.dto.picture.*;
-import com.dd.spring.yunpicturebackend.model.entity.Picture;
-import com.dd.spring.yunpicturebackend.model.entity.SharePicture;
-import com.dd.spring.yunpicturebackend.model.entity.Space;
-import com.dd.spring.yunpicturebackend.model.entity.User;
-import com.dd.spring.yunpicturebackend.model.vo.picture.PictureTagCategory;
-import com.dd.spring.yunpicturebackend.model.vo.picture.PictureVO;
-import com.dd.spring.yunpicturebackend.model.vo.picture.SharePictureVO;
-import com.dd.spring.yunpicturebackend.model.vo.user.UserVO;
-import com.dd.spring.yunpicturebackend.service.PictureService;
-import com.dd.spring.yunpicturebackend.service.SharePictureService;
-import com.dd.spring.yunpicturebackend.service.SpaceService;
-import com.dd.spring.yunpicturebackend.service.UserService;
+import com.dd.yunpicturebackend.model.dto.picture.*;
+import com.dd.yunpicturebackend.model.entity.Picture;
+import com.dd.yunpicturebackend.model.entity.SharePicture;
+import com.dd.yunpicturebackend.model.entity.Space;
+import com.dd.yunpicturebackend.model.entity.User;
+import com.dd.yunpicturebackend.model.vo.picture.PictureTagCategory;
+import com.dd.yunpicturebackend.model.vo.picture.PictureVO;
+import com.dd.yunpicturebackend.model.vo.picture.SharePictureVO;
+import com.dd.yunpicturebackend.model.vo.user.UserVO;
+import com.dd.yunpicturebackend.service.PictureService;
+import com.dd.yunpicturebackend.service.SharePictureService;
+import com.dd.yunpicturebackend.service.SpaceService;
+import com.dd.yunpicturebackend.service.UserService;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -65,6 +64,8 @@ public class PictureController {
     private CacheManager cacheManager;
     @Resource
     private SpaceService spaceService;
+    @Resource
+    private AliYunAiApi aliYunAiApi;
     /**
      * 本地缓存
      */
@@ -296,6 +297,13 @@ public class PictureController {
         Boolean result = pictureService.editPicture(pictureEditRequest, loginUser);
         return ResultUtils.success(result);
     }
+
+    /**
+     * 批量编辑图片
+     * @param pictureEditByBatchRequest
+     * @param request
+     * @return
+     */
     @PostMapping("/edit/batch")
     public BaseResponse<Boolean> editPictureByBatch(@RequestBody PictureEditByBatchRequest pictureEditByBatchRequest,
                                                     HttpServletRequest request) {
@@ -303,6 +311,34 @@ public class PictureController {
         User loginUser = userService.getLoginUser(request);
         pictureService.editPictureByBatch(pictureEditByBatchRequest, loginUser);
         return ResultUtils.success(true);
+    }
+
+    /**
+     * 创建Ai扩图任务
+     * @param createPictureOutPaintingTaskRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/out_pating/create_task")
+    public BaseResponse<CreateOutPaintingTaskResponse> createPictureOutPaintingTask(@RequestBody CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest
+            , HttpServletRequest request) {
+        ThrowUtils.throwIf(createPictureOutPaintingTaskRequest == null || createPictureOutPaintingTaskRequest.getPictureId() == null || createPictureOutPaintingTaskRequest.getPictureId() <= 0, new BusinessException(ErrorCode.PARAMS_ERROR));
+        User loginUser = userService.getLoginUser(request);
+        CreateOutPaintingTaskResponse pictureOutPaintingTask = pictureService.createPictureOutPaintingTask(createPictureOutPaintingTaskRequest, loginUser);
+        return ResultUtils.success(pictureOutPaintingTask);
+    }
+
+    /**
+     * 查看Ai扩图任务
+     * @param taskId
+     * @return
+     */
+    @GetMapping("/out_pating/get_task")
+    public BaseResponse<GetOutPaintingTaskResponse> getPictureOutPaintingTask(String taskId) {
+        ThrowUtils.throwIf(StrUtil.isBlank(taskId), new BusinessException(ErrorCode.PARAMS_ERROR));
+        // 获取任务状态
+        GetOutPaintingTaskResponse outPaintingTask = aliYunAiApi.getOutPaintingTask(taskId);
+        return ResultUtils.success(outPaintingTask);
     }
     /**
      * 上传图片（可重新上传）
