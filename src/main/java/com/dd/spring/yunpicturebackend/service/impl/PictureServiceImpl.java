@@ -57,6 +57,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -614,6 +615,63 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
                 .collect(Collectors.toList());
         // 返回结果
         return pictureVOList.stream().map(PictureVO::objToVo).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void editPictureByBatch(PictureEditByBatchRequest pictureEditByBatchRequest, User loginUser) {
+        //获取和校验参数
+        List<Long> pictureIdList = pictureEditByBatchRequest.getPictureIdList();
+        Long spaceId = pictureEditByBatchRequest.getSpaceId();
+        String category = pictureEditByBatchRequest.getCategory();
+        List<String> tags = pictureEditByBatchRequest.getTags();
+        ThrowUtils.throwIf(CollUtil.isEmpty(pictureIdList), ErrorCode.PARAMS_ERROR, "图片id列表不能为空");
+        //校验空间权限
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NO_AUTH_ERROR);
+        Space space = spaceService.getById(spaceId);
+        ThrowUtils.throwIf(space == null || !space.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "空间不存在或无权限");
+        //查询指定图片（进选择需要的字段）
+        List<Picture> pictureList = this.lambdaQuery()
+                .select(Picture::getId, Picture::getSpaceId)
+                .eq(Picture::getSpaceId, spaceId)
+                .in(Picture::getId, pictureIdList)
+                .list();
+        if (CollUtil.isEmpty(pictureList)) {
+            return;
+        }
+        //更新分类和标签
+        pictureList.forEach(picture -> {
+            if (StrUtil.isNotBlank(category)) {
+                picture.setCategory(category);
+            }
+            if (CollUtil.isNotEmpty(tags)) {
+                picture.setTags(JSONUtil.toJsonStr(tags));
+            }
+        });
+        //批量重命名
+        String nameRule = pictureEditByBatchRequest.getNameRule();
+        fillPictureWithNameRule(pictureList, nameRule);
+        //操作数据库进行批量更新
+        boolean result = this.updateBatchById(pictureList);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "批量操作失败");
+    }
+
+    public void fillPictureWithNameRule(List<Picture> pictureList, String nameRule) {
+        if (StrUtil.isBlank(nameRule) || CollUtil.isEmpty(pictureList)) {
+            return;
+        }
+        long count = 1L;
+        try {
+            for (Picture picture : pictureList) {
+                //替换规则
+                String name = nameRule.replaceAll("\\{序号}", String.valueOf(count++));
+                picture.setName(name);
+            }
+        }catch (Exception e) {
+            log.error("名称解析失败", e);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "名称解析失败");
+        }
+
     }
 }
 

@@ -296,7 +296,14 @@ public class PictureController {
         Boolean result = pictureService.editPicture(pictureEditRequest, loginUser);
         return ResultUtils.success(result);
     }
-
+    @PostMapping("/edit/batch")
+    public BaseResponse<Boolean> editPictureByBatch(@RequestBody PictureEditByBatchRequest pictureEditByBatchRequest,
+                                                    HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureEditByBatchRequest == null, new BusinessException(ErrorCode.PARAMS_ERROR));
+        User loginUser = userService.getLoginUser(request);
+        pictureService.editPictureByBatch(pictureEditByBatchRequest, loginUser);
+        return ResultUtils.success(true);
+    }
     /**
      * 上传图片（可重新上传）
      */
@@ -474,10 +481,10 @@ public class PictureController {
         sharePictureService.lambdaUpdate().eq(SharePicture::getId, id).set(SharePicture::getSaveNum, sharePicture.getSaveNum() + 1).update();
         return ResultUtils.success(true);
     }
-        /**
-         * 获取标签
-         * @return
-         */
+    /**
+     * 获取标签
+     * @return
+     */
     @GetMapping("/tag_category")
     public BaseResponse<PictureTagCategory> listPictureTagCategory() {
         PictureTagCategory pictureTagCategory = new PictureTagCategory();
