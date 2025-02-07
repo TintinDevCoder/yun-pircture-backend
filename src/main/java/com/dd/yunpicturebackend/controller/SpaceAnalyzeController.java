@@ -94,6 +94,7 @@ public class SpaceAnalyzeController {
         List<SpaceCategoryAnalyzeResponse> resultList = spaceAnalyzeService.getSpaceCategoryAnalyze(spaceAnalyzeRequest, loginUser);
         return ResultUtils.success(resultList);
     }
+
     /**
      * 空间大小分析
      * @param spaceAnalyzeRequest
@@ -115,7 +116,6 @@ public class SpaceAnalyzeController {
      * @param request
      * @return
      */
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/user")
     public BaseResponse<List<SpaceUserAnalyzeResponse>> getSpaceUserAnalyze(@RequestBody SpaceUserAnalyzeRequest spaceUserAnalyzeRequest,
                                                                             HttpServletRequest request) {

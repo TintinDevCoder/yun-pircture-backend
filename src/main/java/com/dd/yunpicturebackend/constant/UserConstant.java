@@ -25,7 +25,7 @@ public interface UserConstant {
 
     String DEFAULT_NAME = "userName";
 
-    String DEFAULT_PASSWORD = "123456";
+    String DEFAULT_PASSWORD = "12345678";
     // endregion
 }
 
