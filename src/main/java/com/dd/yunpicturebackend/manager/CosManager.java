@@ -76,9 +76,11 @@ public class CosManager {
         //略缩图处理,进队 > 20kB的图片生成缩略图
         if (file.length() > 2 * 1024) {
             PicOperations.Rule thumbnailRule = new PicOperations.Rule();
-            //拼接缩略图的路径
+            // 拼接缩略图的路径
             String thumbnailKey = FileUtil.mainName(key) + "_thumbnail." + FileUtil.getSuffix(key);
-            thumbnailRule.setFileId(thumbnailKey);
+            // 使用正则表达式去掉查询参数
+            String cleanUrl = thumbnailKey.split("\\?")[0];
+            thumbnailRule.setFileId(cleanUrl);
             thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s", 256, 256));
             thumbnailRule.setBucket(cosClientConfig.getBucket());
             rules.add(thumbnailRule);
