@@ -93,8 +93,8 @@ public class SpaceAnalyzeServiceImpl extends ServiceImpl<SpaceMapper, Space>
             spaceUsageAnalyzeResponse.setUsedCount(space.getTotalCount());
             spaceUsageAnalyzeResponse.setMaxSize(space.getMaxSize());
             spaceUsageAnalyzeResponse.setMaxCount(space.getMaxCount());
-            double sizeUsageRatio = NumberUtil.round(space.getTotalSize() * 100.0 / space.getTotalSize(), 2).doubleValue();
-            double countUsageRatio = NumberUtil.round(space.getTotalCount() * 100.0 / space.getTotalCount(), 2).doubleValue();
+            double sizeUsageRatio = NumberUtil.round(space.getTotalSize() * 100.0 / space.getMaxSize(), 2).doubleValue();
+            double countUsageRatio = NumberUtil.round(space.getTotalCount() * 100.0 / space.getMaxCount(), 2).doubleValue();
             spaceUsageAnalyzeResponse.setSizeUsageRatio(sizeUsageRatio);
             spaceUsageAnalyzeResponse.setCountUsageRatio(countUsageRatio);
             return spaceUsageAnalyzeResponse;
@@ -115,7 +115,7 @@ public class SpaceAnalyzeServiceImpl extends ServiceImpl<SpaceMapper, Space>
                 .stream()
                 .map(result -> {
                     SpaceCategoryAnalyzeResponse spaceCategoryAnalyzeResponse = new SpaceCategoryAnalyzeResponse();
-                    spaceCategoryAnalyzeResponse.setCategory((String) result.get("category"));
+                    spaceCategoryAnalyzeResponse.setCategory(result.get("category") == null ? "未分类" : (String) result.get("category"));
                     spaceCategoryAnalyzeResponse.setCount(((Number) result.get("count")).longValue());
                     spaceCategoryAnalyzeResponse.setTotalSize(((Number) result.get("totalSize")).longValue());
                     return spaceCategoryAnalyzeResponse;
