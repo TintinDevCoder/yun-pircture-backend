@@ -8,10 +8,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.dd.yunpicturebackend.constant.UserConstant;
 import com.dd.yunpicturebackend.enums.SpaceLevelEnum;
+import com.dd.yunpicturebackend.exception.BusinessException;
 import com.dd.yunpicturebackend.exception.ErrorCode;
 import com.dd.yunpicturebackend.exception.ThrowUtils;
 import com.dd.yunpicturebackend.model.dto.space.SpaceAddRequest;
 import com.dd.yunpicturebackend.model.dto.space.SpaceQueryRequest;
+import com.dd.yunpicturebackend.model.dto.space.analyze.SpaceAnalyzeRequest;
+import com.dd.yunpicturebackend.model.entity.Picture;
 import com.dd.yunpicturebackend.model.entity.Space;
 import com.dd.yunpicturebackend.model.entity.User;
 import com.dd.yunpicturebackend.model.vo.space.SpaceVO;
@@ -202,6 +205,14 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
             space.setMaxCount(spaceLevelEnum.getMaxCount());
         }
     }
+
+    @Override
+    public void checkSpaceAuth(User loginUser, Space space) {
+        if (!space.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+    }
+
 
 }
 

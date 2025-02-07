@@ -184,9 +184,7 @@ public class SpaceController {
         ThrowUtils.throwIf(!exists, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
         // 仅本人或管理员可编辑
         Space oldSpace = spaceService.getById(spaceEditRequest.getId());
-        if (!oldSpace.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
+        spaceService.checkSpaceAuth(loginUser, oldSpace);
         // 操作数据库，更新数据
         boolean result = spaceService.updateById(space);
         ThrowUtils.throwIf(!result, new BusinessException(ErrorCode.OPERATION_ERROR));
@@ -208,7 +206,7 @@ public class SpaceController {
         //空间不存在，无法删除
         ThrowUtils.throwIf(oldSpace == null, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
         //当前不是创建空间的用户或管理员
-        ThrowUtils.throwIf(!oldSpace.getUserId().equals(loginUser.getId()) && ! userService.isAdmin(loginUser), new BusinessException(ErrorCode.NO_AUTH_ERROR));
+        spaceService.checkSpaceAuth(loginUser, oldSpace);
         //开启事务
         //操作数据库，删除
         transactionTemplate.execute(status -> {
