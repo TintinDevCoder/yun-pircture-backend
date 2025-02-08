@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dd.yunpicturebackend.model.dto.space.SpaceAddRequest;
 import com.dd.yunpicturebackend.model.dto.space.SpaceQueryRequest;
-import com.dd.yunpicturebackend.model.dto.space.analyze.SpaceAnalyzeRequest;
 import com.dd.yunpicturebackend.model.entity.Space;
 import com.dd.yunpicturebackend.model.entity.User;
 import com.dd.yunpicturebackend.model.vo.space.SpaceVO;

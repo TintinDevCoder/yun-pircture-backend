@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.dd.yunpicturebackend.constant.UserConstant;
 import com.dd.yunpicturebackend.enums.SpaceLevelEnum;
+import com.dd.yunpicturebackend.enums.SpaceRoleEnum;
 import com.dd.yunpicturebackend.enums.SpaceTypeEnum;
 import com.dd.yunpicturebackend.exception.BusinessException;
 import com.dd.yunpicturebackend.exception.ErrorCode;
@@ -17,11 +18,13 @@ import com.dd.yunpicturebackend.model.dto.space.SpaceQueryRequest;
 import com.dd.yunpicturebackend.model.dto.space.analyze.SpaceAnalyzeRequest;
 import com.dd.yunpicturebackend.model.entity.Picture;
 import com.dd.yunpicturebackend.model.entity.Space;
+import com.dd.yunpicturebackend.model.entity.SpaceUser;
 import com.dd.yunpicturebackend.model.entity.User;
 import com.dd.yunpicturebackend.model.vo.space.SpaceVO;
 import com.dd.yunpicturebackend.model.vo.user.UserVO;
 import com.dd.yunpicturebackend.service.SpaceService;
 import com.dd.yunpicturebackend.mapper.SpaceMapper;
+import com.dd.yunpicturebackend.service.SpaceUserService;
 import com.dd.yunpicturebackend.service.UserService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -47,6 +50,8 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     private SpaceMapper spaceMapper;
     @Resource
     private UserService userService;
+    @Resource
+    private SpaceUserService spaceUserService;
     @Resource
     private TransactionTemplate transactionTemplate;
     Map<Long, Object> lockMap = new ConcurrentHashMap<>();
@@ -98,6 +103,15 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
                     //创建
                     boolean result = this.save(space);
                     ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "创建空间失败");
+                    //创建成功后，如果是团队空间，关联新增团队成员记录
+                    if (SpaceTypeEnum.TEAM.getValue() == space.getSpaceType()) {
+                        SpaceUser spaceUser = new SpaceUser();
+                        spaceUser.setSpaceId(space.getId());
+                        spaceUser.setUserId(loginUserId);
+                        spaceUser.setSpaceRole(SpaceRoleEnum.ADMIN.getValue());
+                        boolean saveResult = spaceUserService.save(spaceUser);
+                        ThrowUtils.throwIf(!saveResult, ErrorCode.OPERATION_ERROR, "创建团队成员记录失败");
+                    }
                     //返回写入的id
                     return space.getId();
                 });
