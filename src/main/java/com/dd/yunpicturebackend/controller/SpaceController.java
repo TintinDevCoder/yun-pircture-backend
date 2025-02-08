@@ -12,6 +12,7 @@ import com.dd.yunpicturebackend.enums.SpaceLevelEnum;
 import com.dd.yunpicturebackend.exception.BusinessException;
 import com.dd.yunpicturebackend.exception.ErrorCode;
 import com.dd.yunpicturebackend.exception.ThrowUtils;
+import com.dd.yunpicturebackend.manager.auth.SpaceUserAuthManager;
 import com.dd.yunpicturebackend.model.dto.space.*;
 import com.dd.yunpicturebackend.model.dto.space.*;
 import com.dd.yunpicturebackend.model.entity.Picture;
@@ -47,6 +48,8 @@ public class SpaceController {
     private TransactionTemplate transactionTemplate;
     @Autowired
     private PictureService pictureService;
+    @Autowired
+    private SpaceUserAuthManager spaceUserAuthManager;
     //管理员
 
     /**
@@ -138,8 +141,13 @@ public class SpaceController {
         //查询数据库
         Space space = spaceService.getById(id);
         ThrowUtils.throwIf(space == null, new BusinessException(ErrorCode.NOT_FOUND_ERROR));
+        SpaceVO spaceVO = spaceService.getSpaceVO(space, request);
+        // 设置权限列表
+        User loginUser = userService.getLoginUser(request);
+        List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser);
+        spaceVO.setPermissionList(permissionList);
         //返回封装类
-        return ResultUtils.success(spaceService.getSpaceVO(space, request));
+        return ResultUtils.success(spaceVO);
     }
     /**
      * 分页条件获取空间封装类列表（用户用、脱敏）

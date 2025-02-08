@@ -25,6 +25,7 @@ import com.dd.yunpicturebackend.service.SpaceUserService;
 import com.dd.yunpicturebackend.mapper.SpaceUserMapper;
 import com.dd.yunpicturebackend.service.UserService;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -46,6 +47,7 @@ public class SpaceUserServiceImpl extends ServiceImpl<SpaceUserMapper, SpaceUser
     @Resource
     private UserService userService;
     @Resource
+    @Lazy
     private SpaceService spaceService;
 
     @Override

@@ -47,8 +47,6 @@ import java.util.stream.Collectors;
 public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     implements SpaceService{
     @Resource
-    private SpaceMapper spaceMapper;
-    @Resource
     private UserService userService;
     @Resource
     private SpaceUserService spaceUserService;

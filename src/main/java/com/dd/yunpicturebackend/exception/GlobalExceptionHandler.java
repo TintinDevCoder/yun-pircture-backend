@@ -1,5 +1,7 @@
 package com.dd.yunpicturebackend.exception;
 
+import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotPermissionException;
 import com.dd.yunpicturebackend.common.BaseResponse;
 import com.dd.yunpicturebackend.common.ResultUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,28 @@ public class GlobalExceptionHandler {
     public BaseResponse<?> businessExceptionHandler(BusinessException e) {
         log.error("BusinessException", e);
         return ResultUtils.error(e.getCode(), e.getMessage());
+    }
+
+    /**
+     * sa-token 未登陆异常
+     * @param e
+     * @return
+     */
+    @ExceptionHandler(NotLoginException.class)
+    public BaseResponse<?> notLoginException(NotLoginException e) {
+        log.error("NotLoginException", e);
+        return ResultUtils.error(ErrorCode.NOT_LOGIN_ERROR, e.getMessage());
+    }
+
+    /**
+     * sa-token 无权限异常
+     * @param e
+     * @return
+     */
+    @ExceptionHandler(NotPermissionException.class)
+    public BaseResponse<?> notPermissionExceptionHandler(NotPermissionException e) {
+        log.error("NotPermissionException", e);
+        return ResultUtils.error(ErrorCode.NO_AUTH_ERROR, e.getMessage());
     }
 
     /**

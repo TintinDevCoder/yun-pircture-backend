@@ -11,6 +11,7 @@ import com.dd.yunpicturebackend.enums.UserRoleEnum;
 import com.dd.yunpicturebackend.exception.BusinessException;
 import com.dd.yunpicturebackend.exception.ErrorCode;
 import com.dd.yunpicturebackend.exception.ThrowUtils;
+import com.dd.yunpicturebackend.manager.auth.StpKit;
 import com.dd.yunpicturebackend.model.dto.user.UserLoginDTO;
 import com.dd.yunpicturebackend.model.dto.user.UserQueryDTO;
 import com.dd.yunpicturebackend.model.dto.user.UserRegisterDTO;
@@ -144,7 +145,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         HttpSession session = request.getSession();
         // 将用户信息保存到session中，以维持登录状态
         session.setAttribute(UserConstant.USER_LOGIN_STATE, user);
-
+        // 记录用户登录态到 Sa-token，便于空间鉴权时使用，注意保证用户信息与SpringSession中一致
+        StpKit.SPACE.login(user.getId());
+        StpKit.SPACE.getSession().set(UserConstant.USER_LOGIN_STATE, user);
         // 返回登录成功的用户信息视图对象
         return getLoginUserVO(user);
     }
